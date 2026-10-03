@@ -56,12 +56,14 @@ class ConversationalRAGChain:
         llm: BaseChatModel,
         vectorstore_manager: VectorStoreManager,
         memory_manager: ChatHistoryManager,
-        k: int = 4
+        k: int = 4,
+        retrieval_mode: str = "hybrid"
     ):
         self.llm = llm
         self.vectorstore_manager = vectorstore_manager
         self.memory_manager = memory_manager
         self.k = k
+        self.retrieval_mode = retrieval_mode.lower()
 
         # Chains
         self.contextualize_chain = CONTEXTUALIZE_Q_PROMPT | self.llm | StrOutputParser()
@@ -81,7 +83,7 @@ class ConversationalRAGChain:
     ) -> Tuple[str, List[Dict[str, Any]], str]:
         """
         1. Reformulates query if history exists.
-        2. Retrieves top-k documents from ChromaDB with distance/similarity.
+        2. Retrieves top-k documents using Hybrid Search (RRF) or Dense Vector Search.
         Returns: (standalone_question, sources_list, formatted_context_str)
         """
         history = self.memory_manager.get_langchain_messages(session_id, limit=6)
@@ -97,14 +99,24 @@ class ConversationalRAGChain:
                 logger.warning(f"Error reformulating question, using original: {e}")
                 standalone_question = question
 
-        # Retrieve documents with distance scores
+        # Retrieve documents based on configured retrieval mode
+        score_label = "score"
         try:
-            docs_with_scores = self.vectorstore_manager.similarity_search_with_score(
-                query=standalone_question,
-                k=self.k
-            )
+            if self.retrieval_mode == "dense":
+                docs_with_scores = self.vectorstore_manager.similarity_search_with_score(
+                    query=standalone_question,
+                    k=self.k
+                )
+                score_label = "cosine_distance"
+            else:
+                # Default: Hybrid Search combining Dense + BM25 via Reciprocal Rank Fusion
+                docs_with_scores = self.vectorstore_manager.hybrid_search_with_score(
+                    query=standalone_question,
+                    k=self.k
+                )
+                score_label = "rrf_score"
         except Exception as e:
-            logger.error(f"Error querying vector store: {e}")
+            logger.error(f"Error retrieving documents with mode '{self.retrieval_mode}': {e}")
             docs_with_scores = []
 
         sources_info: List[Dict[str, Any]] = []
@@ -116,7 +128,9 @@ class ConversationalRAGChain:
                 "source": doc.metadata.get("source", "Unknown"),
                 "page": doc.metadata.get("page", None),
                 "content": doc.page_content,
-                "score": round(float(score), 4)
+                "score": round(float(score), 4),
+                "score_type": score_label,
+                "strategy": self.retrieval_mode
             })
 
         formatted_context = self._format_docs(docs) if docs else "No relevant documents found."

@@ -112,6 +112,15 @@ with st.sidebar:
     with col_k:
         top_k = st.slider("Top K Chunks", min_value=1, max_value=10, value=4, step=1)
 
+    # Retrieval Strategy (Phase 2 Hybrid Search)
+    retrieval_mode_selection = st.radio(
+        "Retrieval Strategy",
+        options=["Hybrid (BM25 + Dense RRF)", "Dense Only (Vector)"],
+        index=0,
+        help="Hybrid combines BM25 keyword matching with dense embeddings using Reciprocal Rank Fusion."
+    )
+    selected_retrieval_mode = "hybrid" if "Hybrid" in retrieval_mode_selection else "dense"
+
     st.markdown("---")
 
     # 2. Knowledge Base Management
@@ -202,12 +211,14 @@ with st.sidebar:
 # =====================================================================
 st.header("Retrieval-Augmented Generation (RAG) Studio")
 
-col_info1, col_info2, col_info3 = st.columns(3)
+col_info1, col_info2, col_info3, col_info4 = st.columns(4)
 with col_info1:
     st.caption(f"**Provider**: `{selected_provider.upper()}`")
 with col_info2:
     st.caption(f"**Model**: `{selected_model}`")
 with col_info3:
+    st.caption(f"**Strategy**: `{selected_retrieval_mode.upper()}`")
+with col_info4:
     st.caption(f"**Session**: `{st.session_state.current_session_id}`")
 
 st.markdown("---")
@@ -226,9 +237,10 @@ for msg in messages:
             with st.expander(f"🔍 Retrieved Sources ({len(sources)} chunks)", expanded=False):
                 for idx, src in enumerate(sources):
                     page_str = f" | Page {src['page']}" if src.get("page") else ""
+                    score_label = "RRF Score" if src.get("score_type") == "rrf_score" else "Distance"
                     st.markdown(
                         f"<div class='source-card'>"
-                        f"<b>Chunk {idx+1}</b> &bull; Source: <code>{src.get('source', 'Unknown')}</code>{page_str} &bull; Distance: <code>{src.get('score', 'N/A')}</code><br/>"
+                        f"<b>Chunk {idx+1}</b> &bull; Source: <code>{src.get('source', 'Unknown')}</code>{page_str} &bull; {score_label}: <code>{src.get('score', 'N/A')}</code><br/>"
                         f"<i>\"{src.get('content', '')[:300]}...\"</i>"
                         f"</div>",
                         unsafe_allow_html=True
@@ -265,7 +277,8 @@ if user_query:
                 llm=llm,
                 vectorstore_manager=vsm,
                 memory_manager=memory,
-                k=top_k
+                k=top_k,
+                retrieval_mode=selected_retrieval_mode
             )
 
             # 4. Stream response and render sources
@@ -304,9 +317,10 @@ if user_query:
                     with st.expander(f"🔍 Retrieved Sources ({len(sources_info)} chunks)", expanded=False):
                         for idx, src in enumerate(sources_info):
                             page_str = f" | Page {src['page']}" if src.get("page") else ""
+                            score_label = "RRF Score" if src.get("score_type") == "rrf_score" else "Distance"
                             st.markdown(
                                 f"<div class='source-card'>"
-                                f"<b>Chunk {idx+1}</b> &bull; Source: <code>{src.get('source', 'Unknown')}</code>{page_str} &bull; Distance: <code>{src.get('score', 'N/A')}</code><br/>"
+                                f"<b>Chunk {idx+1}</b> &bull; Source: <code>{src.get('source', 'Unknown')}</code>{page_str} &bull; {score_label}: <code>{src.get('score', 'N/A')}</code><br/>"
                                 f"<i>\"{src.get('content', '')[:300]}...\"</i>"
                                 f"</div>",
                                 unsafe_allow_html=True
