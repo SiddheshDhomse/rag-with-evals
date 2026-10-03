@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Evaluation Suite | Continuous Benchmarking & Phase Diagnostics</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      --primary: #4f46e5;
+      --primary-light: #eef2ff;
+      --green: #10b981;
+      --green-light: #ecfdf5;
+      --blue: #2563eb;
+      --blue-light: #eff6ff;
+      --purple: #8b5cf6;
+      --purple-light: #f5f3ff;
+      --amber: #f59e0b;
+      --amber-light: #fffbeb;
+      --dark-card: #1e1b4b;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      background: var(--card-bg);
+      padding: 18px 24px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+    }
+
+    .brand-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .badge-query-count {
+      background: #ede9fe;
+      color: #6d28d9;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .brand-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-pill {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .nav-pill:hover, .nav-pill.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: #c7d2fe;
+    }
+
+    .btn-add {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+      transition: background 0.2s;
+    }
+
+    .btn-add:hover {
+      background: #4338ca;
+    }
+
+    /* Phase Selector Toolbar */
+    .phase-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 12px 18px;
+      background: #ffffff;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .phase-toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .phase-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-right: 6px;
+    }
+
+    .phase-btn {
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: white;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .phase-btn:hover {
+      border-color: #cbd5e1;
+      color: var(--text-main);
+    }
+
+    .phase-btn.active {
+      background: var(--text-main);
+      color: white;
+      border-color: var(--text-main);
+    }
+
+    .phase-btn.highlight {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+
+    .phase-btn.highlight.active {
+      background: #059669;
+      color: white;
+      border-color: #059669;
+    }
+
+    /* Metric Cards Grid */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .metric-card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .metric-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .metric-icon-wrap {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .metric-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .metric-delta {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .delta-pos {
+      background: #ecfdf5;
+      color: #059669;
+    }
+
+    .delta-neutral {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .progress-bar-bg {
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .metric-caption {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Triad Card (Special Dark Card) */
+    .metric-card.dark {
+      background: var(--dark-card);
+      border-color: #312e81;
+      color: white;
+    }
+
+    .metric-card.dark .metric-title {
+      color: #a5b4fc;
+    }
+
+    .metric-card.dark .metric-value {
+      color: white;
+    }
+
+    .metric-card.dark .metric-caption {
+      color: #c7d2fe;
+    }
+
+    .metric-card.dark .progress-bar-bg {
+      background: #312e81;
+    }
+
+    .metric-card.dark .progress-bar-fill {
+      background: #818cf8;
+    }
+
+    /* Middle Section: Radar & Snapshot */
+    .middle-grid {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .panel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .panel-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .panel-subtitle {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .legend-group {
+      display: flex;
+      gap: 14px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* Canvas styling */
+    .canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 310px;
+      position: relative;
+    }
+
+    #radarCanvas {
+      width: 380px;
+      height: 300px;
+    }
+
+    /* Snapshot Panel */
+    .snapshot-row {
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+
+    .snapshot-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .snapshot-tag-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-main);
+    }
+
+    .tag-count {
+      background: #e2e8f0;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .snapshot-stat-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .snapshot-stat {
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    .snapshot-stat b {
+      color: var(--text-main);
+    }
+
+    .score-badge {
+      background: #ede9fe;
+      color: #6d28d9;
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 8px;
+    }
+
+    .mini-bars-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .mini-bar-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .mini-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Ablation Progress Card */
+    .progression-card {
+      margin-top: 14px;
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .phase-timeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .timeline-step {
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      background: #f8fafc;
+      position: relative;
+    }
+
+    .timeline-step.completed {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+
+    .timeline-step.current {
+      border-color: #93c5fd;
+      background: #eff6ff;
+    }
+
+    .timeline-step.planned {
+      border-style: dashed;
+      background: #ffffff;
+      opacity: 0.75;
+    }
+
+    .step-badge {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .badge-done { background: #dcfce7; color: #15803d; }
+    .badge-active { background: #dbeafe; color: #1e40af; }
+    .badge-next { background: #f1f5f9; color: #475569; }
+
+    .step-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .step-desc {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Query Table Section */
+    .table-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .table-header-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .query-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .query-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .query-table td {
+      padding: 14px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+
+    .query-table tr:hover td {
+      background: #f8fafc;
+    }
+
+    .query-id {
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .query-text {
+      font-weight: 500;
+      color: var(--text-main);
+      max-width: 440px;
+    }
+
+    .score-pill {
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      font-size: 12px;
+    }
+
+    .score-green { background: #ecfdf5; color: #059669; }
+    .score-amber { background: #fffbeb; color: #d97706; }
+    .score-red { background: #fef2f2; color: #dc2626; }
+    .score-blue { background: #eff6ff; color: #2563eb; }
+
+    .btn-inspect {
+      background: white;
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-inspect:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: #c7d2fe;
+    }
+
+    /* Modal / Inspector Drawer */
+    .drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(2px);
+      display: none;
+      justify-content: flex-end;
+      z-index: 1000;
+    }
+
+    .drawer {
+      width: 600px;
+      height: 100vh;
+      background: white;
+      padding: 28px;
+      overflow-y: auto;
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+      animation: slideIn 0.25s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .drawer-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .btn-close {
+      background: #f1f5f9;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .drawer-section {
+      margin-bottom: 20px;
+    }
+
+    .drawer-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .drawer-box {
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-main);
+    }
+
+    .drawer-box.highlight {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+
+    .drawer-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .dm-card {
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .dm-val {
+      font-size: 18px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
+          <path d="M12 2a10 10 0 0 1 10 10"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title-wrap">
+          <h1 class="brand-title">RAG Evaluation Suite</h1>
+          <span class="badge-query-count" id="headerQueryCount">4 Evaluated Queries</span>
+        </div>
+        <p class="brand-subtitle">Continuous Retrieval-Augmented Generation Benchmarking & Phase Diagnostics</p>
+      </div>
+    </div>
+
+    <div class="header-nav">
+      <button class="nav-pill active" onclick="switchNav('dashboard')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        Dashboard & Runs
+      </button>
+      <button class="nav-pill" onclick="switchNav('benchmark')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        Phase Benchmark
+      </button>
+      <button class="nav-pill" onclick="switchNav('diff')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+        Side-by-Side Diff
+      </button>
+      <button class="btn-add" onclick="triggerRunInfo()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Add Evaluation Run
+      </button>
+    </div>
+  </header>
+
+  <!-- Phase Switcher Toolbar -->
+  <div class="phase-toolbar">
+    <div class="phase-toggle-group">
+      <span class="phase-label">Active View:</span>
+      <button class="phase-btn" id="btnPhase1" onclick="setPhase('phase1')">Phase 1: Dense Baseline</button>
+      <button class="phase-btn highlight active" id="btnPhase2" onclick="setPhase('phase2')">Phase 2: Hybrid Search (BM25 + RRF)</button>
+      <button class="phase-btn" id="btnCompare" onclick="setPhase('compare')">Side-by-Side Overlay</button>
+    </div>
+    <div style="font-size: 12.5px; color: var(--text-muted);">
+      Dataset: <b>explodinggradients/amnesty_qa (english_v2)</b> &bull; LLM Judge: <b>Groq (Qwen 2.5)</b>
+    </div>
+  </div>
+
+  <!-- Metric Cards Grid -->
+  <section class="metric-grid">
+    <!-- Context Recall -->
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-title">Context Recall</span>
+        <div class="metric-icon-wrap" style="background: var(--green-light); color: var(--green);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value" id="cardRecallVal">83.8%</span>
+        <span class="metric-delta delta-pos" id="cardRecallDelta">+37.5%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="cardRecallBar" style="width: 83.8%; background: var(--green);"></div>
+      </div>
+      <p class="metric-caption">Retrieved relevant ground truth facts</p>
+    </div>
+
+    <!-- Context Precision -->
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-title">Precision</span>
+        <div class="metric-icon-wrap" style="background: var(--blue-light); color: var(--blue);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value" id="cardPrecisionVal">85.0%</span>
+        <span class="metric-delta delta-pos" id="cardPrecisionDelta">+27.5%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="cardPrecisionBar" style="width: 85.0%; background: var(--blue);"></div>
+      </div>
+      <p class="metric-caption">Top-ranked chunk signal quality</p>
+    </div>
+
+    <!-- Faithfulness -->
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-title">Faithfulness</span>
+        <div class="metric-icon-wrap" style="background: var(--purple-light); color: var(--purple);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value" id="cardFaithVal">100.0%</span>
+        <span class="metric-delta delta-neutral" id="cardFaithDelta">0.0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="cardFaithBar" style="width: 100%; background: var(--purple);"></div>
+      </div>
+      <p class="metric-caption">Zero hallucination groundedness</p>
+    </div>
+
+    <!-- Relevance -->
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-title">Relevance</span>
+        <div class="metric-icon-wrap" style="background: var(--amber-light); color: var(--amber);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value" id="cardRelevanceVal">93.8%</span>
+        <span class="metric-delta delta-pos" id="cardRelevanceDelta">+13.8%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="cardRelevanceBar" style="width: 93.8%; background: var(--amber);"></div>
+      </div>
+      <p class="metric-caption">Completeness to user query</p>
+    </div>
+
+    <!-- Avg Latency -->
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-title">Avg Latency</span>
+        <div class="metric-icon-wrap" style="background: #f1f5f9; color: var(--text-muted);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value" id="cardLatencyVal">2.33s</span>
+        <span class="metric-delta delta-pos" id="cardLatencyDelta">-8.02s</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="cardLatencyBar" style="width: 25%; background: #64748b;"></div>
+      </div>
+      <p class="metric-caption">Retrieval + generation time</p>
+    </div>
+
+    <!-- Triad Index -->
+    <div class="metric-card dark">
+      <div class="metric-header">
+        <span class="metric-title">Triad Index</span>
+        <div class="metric-icon-wrap" style="background: rgba(255,255,255,0.15); color: white;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path></svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value" id="cardTriadVal">90.6%</span>
+        <span class="metric-delta delta-pos" id="cardTriadDelta">+19.7%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="cardTriadBar" style="width: 90.6%;"></div>
+      </div>
+      <p class="metric-caption">Harmonized quality index</p>
+    </div>
+  </section>
+
+  <!-- Middle Section: Radar Chart & Benchmark Snapshot -->
+  <section class="middle-grid">
+    <!-- Radar Chart Panel -->
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">RAG Triad Health Radar</h2>
+          <p class="panel-subtitle">Multidimensional quality footprint</p>
+        </div>
+        <div class="legend-group">
+          <div class="legend-item" id="legendPhase1" style="display: none;">
+            <div class="legend-dot" style="background: #94a3b8;"></div>
+            <span>Baseline</span>
+          </div>
+          <div class="legend-item" id="legendPhase2">
+            <div class="legend-dot" style="background: #4f46e5;"></div>
+            <span id="legendPhase2Label">Phase 2 (Hybrid)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="radarCanvas" width="760" height="600"></canvas>
+      </div>
+    </div>
+
+    <!-- Snapshot Panel -->
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Phase & Pipeline Benchmark Snapshot</h2>
+          <p class="panel-subtitle">Grouped evaluation across testing phases</p>
+        </div>
+        <a href="#tableSection" style="font-size: 13px; font-weight: 600; color: var(--primary); text-decoration: none;">
+          Full Query Diagnostics &rarr;
+        </a>
+      </div>
+
+      <!-- Snapshot Row -->
+      <div class="snapshot-row">
+        <div class="snapshot-top">
+          <div class="snapshot-tag-wrap">
+            <span class="tag-name">multi_context_reasoning</span>
+            <span class="tag-count">4 queries</span>
+          </div>
+          <div class="snapshot-stat-wrap">
+            <span class="snapshot-stat">Avg Latency: <b id="snapLatency">2.33s</b></span>
+            <span class="score-badge" id="snapScore">Score: 90.6%</span>
+          </div>
+        </div>
+
+        <div class="mini-bars-grid">
+          <div class="mini-bar-item">
+            <div class="mini-bar-label">
+              <span>Recall</span>
+              <span id="snapRecallVal">83.8%</span>
+            </div>
+            <div class="progress-bar-bg" style="margin-bottom:0;">
+              <div class="progress-bar-fill" id="snapRecallBar" style="width: 83.8%; background: var(--green);"></div>
+            </div>
+          </div>
+          <div class="mini-bar-item">
+            <div class="mini-bar-label">
+              <span>Precision</span>
+              <span id="snapPrecisionVal">85.0%</span>
+            </div>
+            <div class="progress-bar-bg" style="margin-bottom:0;">
+              <div class="progress-bar-fill" id="snapPrecisionBar" style="width: 85.0%; background: var(--blue);"></div>
+            </div>
+          </div>
+          <div class="mini-bar-item">
+            <div class="mini-bar-label">
+              <span>Faithfulness</span>
+              <span id="snapFaithVal">100.0%</span>
+            </div>
+            <div class="progress-bar-bg" style="margin-bottom:0;">
+              <div class="progress-bar-fill" id="snapFaithBar" style="width: 100%; background: var(--purple);"></div>
+            </div>
+          </div>
+          <div class="mini-bar-item">
+            <div class="mini-bar-label">
+              <span>Relevance</span>
+              <span id="snapRelevanceVal">93.8%</span>
+            </div>
+            <div class="progress-bar-bg" style="margin-bottom:0;">
+              <div class="progress-bar-fill" id="snapRelevanceBar" style="width: 93.8%; background: var(--amber);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progression Timeline -->
+      <div class="progression-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size: 13px; font-weight: 700; color: var(--text-main);">Ablation Lifecycle Roadmap</h3>
+          <span style="font-size: 11.5px; color: var(--text-muted);">Step 2 of 4 Complete</span>
+        </div>
+
+        <div class="phase-timeline">
+          <!-- Step 1 -->
+          <div class="timeline-step completed">
+            <span class="step-badge badge-done">&check; Phase 1</span>
+            <h4 class="step-title">Dense Baseline</h4>
+            <p class="step-desc">ChromaDB + all-MiniLM-L6-v2. Established 46.3% recall baseline.</p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="timeline-step completed" style="border-color: #34d399; background: #ecfdf5;">
+            <span class="step-badge badge-done" style="background:#a7f3d0; color:#065f46;">&check; Phase 2 (Active)</span>
+            <h4 class="step-title">Hybrid Search</h4>
+            <p class="step-desc">BM25 + Dense RRF. +37.5% recall boost on exact keywords.</p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="timeline-step current">
+            <span class="step-badge badge-active">Up Next</span>
+            <h4 class="step-title">Cross-Encoder</h4>
+            <p class="step-desc">FlashRank / Cohere reranker to prune distractors from top-15 to 4.</p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="timeline-step planned">
+            <span class="step-badge badge-next">Planned</span>
+            <h4 class="step-title">Query Transform</h4>
+            <p class="step-desc">HyDE and Multi-Query step-back reasoning for multi-hop synthesis.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Query Diagnostic Table -->
+  <section class="table-section" id="tableSection">
+    <div class="table-header-wrap">
+      <div>
+        <h2 class="panel-title">Query-by-Query Evaluation Breakdown</h2>
+        <p class="panel-subtitle">Comparative sample results on Golden Testset (Amnesty QA)</p>
+      </div>
+      <div style="font-size: 12.5px; color: var(--text-muted);">
+        Click <b>Inspect Details</b> to review retrieved chunks & judge reasoning
+      </div>
+    </div>
+
+    <table class="query-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Question</th>
+          <th>Baseline Recall</th>
+          <th>Hybrid Recall</th>
+          <th>Recall Delta</th>
+          <th>Precision (Hybrid)</th>
+          <th>Faithfulness</th>
+          <th>Relevance</th>
+          <th>Latency</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="queryTableBody">
+        <!-- Rendered dynamically via JS -->
+      </tbody>
+    </table>
+  </section>
+
+</div>
+
+<!-- Inspection Drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer(event)">
+  <div class="drawer" onclick="event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span class="badge-query-count" id="drawerId">amnesty_01</span>
+        <h3 class="drawer-title" id="drawerTitle" style="margin-top: 6px;">Question Diagnostic</h3>
+      </div>
+      <button class="btn-close" onclick="closeDrawer()">&times;</button>
+    </div>
+
+    <!-- Metrics row -->
+    <div class="drawer-metrics">
+      <div class="dm-card">
+        <div style="font-size:11px; color:var(--text-muted);">Recall</div>
+        <div class="dm-val" id="dmRecall" style="color:var(--green);">0.75</div>
+      </div>
+      <div class="dm-card">
+        <div style="font-size:11px; color:var(--text-muted);">Precision</div>
+        <div class="dm-val" id="dmPrecision" style="color:var(--blue);">0.90</div>
+      </div>
+      <div class="dm-card">
+        <div style="font-size:11px; color:var(--text-muted);">Faithfulness</div>
+        <div class="dm-val" id="dmFaith" style="color:var(--purple);">1.00</div>
+      </div>
+      <div class="dm-card">
+        <div style="font-size:11px; color:var(--text-muted);">Relevance</div>
+        <div class="dm-val" id="dmRelevance" style="color:var(--amber);">0.95</div>
+      </div>
+    </div>
+
+    <!-- Ground truth -->
+    <div class="drawer-section">
+      <div class="drawer-label">Ground Truth Target</div>
+      <div class="drawer-box" id="drawerGroundTruth"></div>
+    </div>
+
+    <!-- Answer -->
+    <div class="drawer-section">
+      <div class="drawer-label">Synthesized Response (Phase 2 Hybrid)</div>
+      <div class="drawer-box highlight" id="drawerAnswer"></div>
+    </div>
+
+    <!-- Judge Reasoning -->
+    <div class="drawer-section">
+      <div class="drawer-label">LLM-as-a-Judge Reasoning & Analysis</div>
+      <div class="drawer-box" id="drawerReasoning" style="background:#fffbeb; border-color:#fde68a;"></div>
+    </div>
+
+    <!-- Ablation Insight -->
+    <div class="drawer-section">
+      <div class="drawer-label">Ablation Root-Cause Analysis</div>
+      <div class="drawer-box" id="drawerAblation" style="background:#f0fdf4; border-color:#bbf7d0;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Benchmark Data Repository
+  const DATA = {
+    phase1: {
+      name: "Phase 1: Dense Baseline",
+      recall: 46.3,
+      precision: 57.5,
+      faithfulness: 100.0,
+      relevance: 80.0,
+      latency: 10.35,
+      triad: 70.9,
+      recallDelta: "+0.0%",
+      precisionDelta: "+0.0%",
+      faithDelta: "0.0%",
+      relevanceDelta: "+0.0%",
+      latencyDelta: "0.0s",
+      triadDelta: "+0.0%"
+    },
+    phase2: {
+      name: "Phase 2: Hybrid Search (BM25 + RRF)",
+      recall: 83.8,
+      precision: 85.0,
+      faithfulness: 100.0,
+      relevance: 93.8,
+      latency: 2.33,
+      triad: 90.6,
+      recallDelta: "+37.5%",
+      precisionDelta: "+27.5%",
+      faithDelta: "0.0%",
+      relevanceDelta: "+13.8%",
+      latencyDelta: "-8.02s",
+      triadDelta: "+19.7%"
+    },
+    samples: [
+      {
+        id: "amnesty_01",
+        question: "What are the global implications of the USA Supreme Court ruling on abortion?",
+        p1Recall: 0.25,
+        p2Recall: 0.75,
+        p1Precision: 0.50,
+        p2Precision: 0.90,
+        faithfulness: 1.00,
+        relevance: 0.95,
+        latency: 2.30,
+        groundTruth: "The global implications of the USA Supreme Court ruling on abortion are significant. The ruling has led to limited or no access to abortion for one in three women and girls of reproductive age in states where abortion access is restricted... geopolitically inspiring anti-abortion attacks in African countries, and creating a chilling effect on international human rights.",
+        answer: "Based on the provided documents, the global implications include: 1) International Debate & Influence on foreign attitudes; 2) Risk of anti-abortion legislative attacks abroad; 3) Disruption to international NGOs and women's health funding; 4) Geopolitical ripple effects affecting global human rights protections.",
+        reasoning: "Context recall is high (0.75) because BM25 successfully retrieved international NGO and African policy impact passages. Context precision is 0.90 as all 4 top chunks directly relate to global implications. Faithfulness is perfect (1.00) and Answer Relevance is 0.95.",
+        ablationInsight: "Dense retrieval failed because semantic embeddings clustered around domestic US abortion rights, missing international foreign policy passages. BM25 sparse matching on 'global', 'international', and 'organizations' retrieved the critical external impact chunks."
+      },
+      {
+        id: "amnesty_02",
+        question: "Which companies are the main contributors to GHG emissions and their role in global warming according to the Carbon Majors database?",
+        p1Recall: 0.60,
+        p2Recall: 0.60,
+        p1Precision: 0.80,
+        p2Precision: 0.80,
+        faithfulness: 1.00,
+        relevance: 0.80,
+        latency: 4.32,
+        groundTruth: "100 existing fossil fuel companies (and 8 no longer existing) are responsible for 71% of all GHG emissions since 1988. In the Americas, ExxonMobil, Chevron, Peabody (US), Pemex (Mexico), and PDVSA (Venezuela) are largest emitters. Disproportionately affects vulnerable populations in the Global South.",
+        answer: "According to the Carbon Majors database, the main contributors are fossil fuel and coal mining companies. 100 existing companies produced almost a trillion tons of emissions, representing 71% of all GHG emissions since 1988. They play a key role as primary drivers of global warming.",
+        reasoning: "Context recall is 0.60; the core 71% statistic and 100 companies are accurately cited, but specific company names and socio-economic Global South statistics were omitted due to chunk boundaries. Faithfulness is 1.00.",
+        ablationInsight: "Both Dense and Hybrid search successfully located the dominant Carbon Majors summary chunk. Cross-Encoder reranking (Phase 3) will be required to bring the secondary Global South equity chunk into top 4."
+      },
+      {
+        id: "amnesty_03",
+        question: "Which private companies in the Americas are the largest GHG emitters according to the Carbon Majors database?",
+        p1Recall: 1.00,
+        p2Recall: 1.00,
+        p1Precision: 0.80,
+        p2Precision: 0.80,
+        faithfulness: 1.00,
+        relevance: 1.00,
+        latency: 1.74,
+        groundTruth: "The largest private companies in the Americas that are the largest GHG emitters according to the Carbon Majors database are ExxonMobil, Chevron, and Peabody.",
+        answer: "According to the Carbon Majors database, the private companies in the Americas responsible for the most greenhouse gas emissions are from the United States: 1. ExxonMobil, 2. Chevron, 3. Peabody.",
+        reasoning: "Perfect recall (1.00) and answer relevance (1.00). Chunk 3 explicitly lists ExxonMobil, Chevron, and Peabody as the largest private emitters in the Americas.",
+        ablationInsight: "Maintained 100% ceiling performance across both phases. BM25 and Dense both assigned high scores to the named entities."
+      },
+      {
+        id: "amnesty_04",
+        question: "What action did Amnesty International urge its supporters to take in response to the killing of the Ogoni 9?",
+        p1Recall: 0.00,
+        p2Recall: 1.00,
+        p1Precision: 0.20,
+        p2Precision: 0.90,
+        faithfulness: 1.00,
+        relevance: 1.00,
+        latency: 0.97,
+        groundTruth: "Amnesty International urged its supporters to send appeals for the defenders' freedom to Nigerian authorities and later to send letters of outrage.",
+        answer: "In response to the killing of the Ogoni 9, Amnesty International called on its vast network of supporters to deluge Nigerian authorities first with appeals for the defenders' freedom, and later with letters of outrage.",
+        reasoning: "Context recall is 1.00 because Chunk 2 contains the verbatim sentence matching ground truth ('deluge Nigerian authorities first with appeals... and later with letters of outrage'). Answer is 100% faithful and perfectly relevant.",
+        ablationInsight: "The definitive empirical proof of Hybrid Search. Baseline dense search had 0% recall because embeddings mapped 'killing' to generic protest chunks. BM25 matched the exact tokens 'Ogoni 9', 'appeals', and 'letters of outrage', ranking the ground-truth chunk at Rank 2 and lifting recall from 0.00 to 1.00."
+      }
+    ]
+  };
+
+  let currentPhase = "phase2";
+
+  function setPhase(phase) {
+    currentPhase = phase;
+    document.getElementById("btnPhase1").classList.remove("active");
+    document.getElementById("btnPhase2").classList.remove("active");
+    document.getElementById("btnCompare").classList.remove("active");
+
+    if (phase === "phase1") {
+      document.getElementById("btnPhase1").classList.add("active");
+      updateCards(DATA.phase1, false);
+      document.getElementById("legendPhase1").style.display = "none";
+      document.getElementById("legendPhase2").style.display = "flex";
+      document.getElementById("legendPhase2Label").innerText = "Baseline";
+      drawRadar([DATA.phase1.recall, DATA.phase1.precision, DATA.phase1.faithfulness, DATA.phase1.relevance], null);
+    } else if (phase === "phase2") {
+      document.getElementById("btnPhase2").classList.add("active");
+      updateCards(DATA.phase2, true);
+      document.getElementById("legendPhase1").style.display = "none";
+      document.getElementById("legendPhase2").style.display = "flex";
+      document.getElementById("legendPhase2Label").innerText = "Phase 2 (Hybrid)";
+      drawRadar([DATA.phase2.recall, DATA.phase2.precision, DATA.phase2.faithfulness, DATA.phase2.relevance], null);
+    } else {
+      document.getElementById("btnCompare").classList.add("active");
+      updateCards(DATA.phase2, true);
+      document.getElementById("legendPhase1").style.display = "flex";
+      document.getElementById("legendPhase2").style.display = "flex";
+      document.getElementById("legendPhase2Label").innerText = "Phase 2 (Hybrid)";
+      drawRadar(
+        [DATA.phase2.recall, DATA.phase2.precision, DATA.phase2.faithfulness, DATA.phase2.relevance],
+        [DATA.phase1.recall, DATA.phase1.precision, DATA.phase1.faithfulness, DATA.phase1.relevance]
+      );
+    }
+  }
+
+  function updateCards(data, showDelta) {
+    document.getElementById("cardRecallVal").innerText = data.recall.toFixed(1) + "%";
+    document.getElementById("cardRecallBar").style.width = data.recall + "%";
+    document.getElementById("cardRecallDelta").innerText = data.recallDelta;
+    document.getElementById("cardRecallDelta").style.display = showDelta ? "inline-block" : "none";
+
+    document.getElementById("cardPrecisionVal").innerText = data.precision.toFixed(1) + "%";
+    document.getElementById("cardPrecisionBar").style.width = data.precision + "%";
+    document.getElementById("cardPrecisionDelta").innerText = data.precisionDelta;
+    document.getElementById("cardPrecisionDelta").style.display = showDelta ? "inline-block" : "none";
+
+    document.getElementById("cardFaithVal").innerText = data.faithfulness.toFixed(1) + "%";
+    document.getElementById("cardFaithBar").style.width = data.faithfulness + "%";
+    document.getElementById("cardFaithDelta").innerText = data.faithDelta;
+
+    document.getElementById("cardRelevanceVal").innerText = data.relevance.toFixed(1) + "%";
+    document.getElementById("cardRelevanceBar").style.width = data.relevance + "%";
+    document.getElementById("cardRelevanceDelta").innerText = data.relevanceDelta;
+    document.getElementById("cardRelevanceDelta").style.display = showDelta ? "inline-block" : "none";
+
+    document.getElementById("cardLatencyVal").innerText = data.latency.toFixed(2) + "s";
+    document.getElementById("cardLatencyDelta").innerText = data.latencyDelta;
+    document.getElementById("cardLatencyDelta").style.display = showDelta ? "inline-block" : "none";
+
+    document.getElementById("cardTriadVal").innerText = data.triad.toFixed(1) + "%";
+    document.getElementById("cardTriadBar").style.width = data.triad + "%";
+    document.getElementById("cardTriadDelta").innerText = data.triadDelta;
+    document.getElementById("cardTriadDelta").style.display = showDelta ? "inline-block" : "none";
+
+    // Snapshot
+    document.getElementById("snapRecallVal").innerText = data.recall.toFixed(1) + "%";
+    document.getElementById("snapRecallBar").style.width = data.recall + "%";
+    document.getElementById("snapPrecisionVal").innerText = data.precision.toFixed(1) + "%";
+    document.getElementById("snapPrecisionBar").style.width = data.precision + "%";
+    document.getElementById("snapFaithVal").innerText = data.faithfulness.toFixed(1) + "%";
+    document.getElementById("snapFaithBar").style.width = data.faithfulness + "%";
+    document.getElementById("snapRelevanceVal").innerText = data.relevance.toFixed(1) + "%";
+    document.getElementById("snapRelevanceBar").style.width = data.relevance + "%";
+    document.getElementById("snapLatency").innerText = data.latency.toFixed(2) + "s";
+    document.getElementById("snapScore").innerText = "Score: " + data.triad.toFixed(1) + "%";
+  }
+
+  // Draw High-Resolution Radar Chart on HTML5 Canvas
+  function drawRadar(primaryValues, secondaryValues) {
+    const canvas = document.getElementById("radarCanvas");
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 2;
+
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    const centerX = w / 2;
+    const centerY = h / 2 + 5;
+    const radius = 105;
+
+    const axes = [
+      { name: "Context Recall", angle: -Math.PI / 2 },
+      { name: "Precision", angle: 0 },
+      { name: "Faithfulness", angle: Math.PI / 2 },
+      { name: "Relevance", angle: Math.PI }
+    ];
+
+    const rings = [0.25, 0.5, 0.75, 1.0];
+
+    // Draw background concentric web
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 1;
+    rings.forEach(r => {
+      ctx.beginPath();
+      for (let i = 0; i < axes.length; i++) {
+        const x = centerX + Math.cos(axes[i].angle) * (radius * r);
+        const y = centerY + Math.sin(axes[i].angle) * (radius * r);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      // Ring percentage label
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(Math.round(r * 100) + "%", centerX, centerY - (radius * r) + 10);
+    });
+
+    // Draw axis spokes
+    axes.forEach(axis => {
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX + Math.cos(axis.angle) * radius, centerY + Math.sin(axis.angle) * radius);
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.stroke();
+
+      // Axis Labels
+      const labelX = centerX + Math.cos(axis.angle) * (radius + 24);
+      const labelY = centerY + Math.sin(axis.angle) * (radius + 24);
+      ctx.fillStyle = "#475569";
+      ctx.font = "bold 12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(axis.name, labelX, labelY);
+    });
+
+    // Function to draw a radar polygon
+    function renderPolygon(values, strokeColor, fillColor, pointColor) {
+      ctx.beginPath();
+      for (let i = 0; i < axes.length; i++) {
+        const valFraction = Math.max(0.05, values[i] / 100);
+        const x = centerX + Math.cos(axes[i].angle) * (radius * valFraction);
+        const y = centerY + Math.sin(axes[i].angle) * (radius * valFraction);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Points
+      for (let i = 0; i < axes.length; i++) {
+        const valFraction = Math.max(0.05, values[i] / 100);
+        const x = centerX + Math.cos(axes[i].angle) * (radius * valFraction);
+        const y = centerY + Math.sin(axes[i].angle) * (radius * valFraction);
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = pointColor;
+        ctx.fill();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    // Draw secondary (Baseline) if present
+    if (secondaryValues) {
+      renderPolygon(secondaryValues, "#94a3b8", "rgba(148, 163, 184, 0.25)", "#64748b");
+    }
+
+    // Draw primary polygon
+    const stroke = currentPhase === "phase1" ? "#6366f1" : "#4f46e5";
+    const fill = currentPhase === "phase1" ? "rgba(99, 102, 241, 0.22)" : "rgba(79, 70, 229, 0.25)";
+    renderPolygon(primaryValues, stroke, fill, "#4f46e5");
+
+    ctx.restore();
+  }
+
+  // Populate Query Table
+  function renderTable() {
+    const tbody = document.getElementById("queryTableBody");
+    tbody.innerHTML = "";
+
+    DATA.samples.forEach(s => {
+      const delta = ((s.p2Recall - s.p1Recall) * 100).toFixed(0);
+      const deltaClass = delta > 0 ? "score-green" : "score-blue";
+      const deltaSign = delta > 0 ? "+" : "";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="query-id">${s.id}</td>
+        <td class="query-text">${s.question}</td>
+        <td><span class="score-pill score-amber">${(s.p1Recall * 100).toFixed(0)}%</span></td>
+        <td><span class="score-pill score-green">${(s.p2Recall * 100).toFixed(0)}%</span></td>
+        <td><span class="score-pill ${deltaClass}">${deltaSign}${delta}%</span></td>
+        <td><b>${(s.p2Precision * 100).toFixed(0)}%</b></td>
+        <td><span class="score-pill score-green">${(s.faithfulness * 100).toFixed(0)}%</span></td>
+        <td><b>${(s.relevance * 100).toFixed(0)}%</b></td>
+        <td style="color:var(--text-muted);">${s.latency}s</td>
+        <td>
+          <button class="btn-inspect" onclick="openDrawer('${s.id}')">Inspect &rarr;</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function openDrawer(id) {
+    const sample = DATA.samples.find(s => s.id === id);
+    if (!sample) return;
+
+    document.getElementById("drawerId").innerText = sample.id;
+    document.getElementById("drawerTitle").innerText = sample.question;
+    document.getElementById("dmRecall").innerText = (sample.p2Recall * 100).toFixed(0) + "%";
+    document.getElementById("dmPrecision").innerText = (sample.p2Precision * 100).toFixed(0) + "%";
+    document.getElementById("dmFaith").innerText = (sample.faithfulness * 100).toFixed(0) + "%";
+    document.getElementById("dmRelevance").innerText = (sample.relevance * 100).toFixed(0) + "%";
+
+    document.getElementById("drawerGroundTruth").innerText = sample.groundTruth;
+    document.getElementById("drawerAnswer").innerText = sample.answer;
+    document.getElementById("drawerReasoning").innerText = sample.reasoning;
+    document.getElementById("drawerAblation").innerText = sample.ablationInsight;
+
+    document.getElementById("drawerOverlay").style.display = "flex";
+  }
+
+  function closeDrawer(e) {
+    document.getElementById("drawerOverlay").style.display = "none";
+  }
+
+  function switchNav(tab) {
+    const pills = document.querySelectorAll(".nav-pill");
+    pills.forEach(p => p.classList.remove("active"));
+    event.currentTarget.classList.add("active");
+
+    if (tab === "dashboard") setPhase("phase2");
+    else if (tab === "benchmark") setPhase("phase1");
+    else if (tab === "diff") setPhase("compare");
+  }
+
+  function triggerRunInfo() {
+    alert("To execute a new evaluation run from CLI:\n\npython evals/run_eval.py --provider groq --dataset amnesty_qa --mode hybrid --limit 4\n\nResults will update benchmark CSVs and can be viewed here.");
+  }
+
+  // Initial Load
+  window.addEventListener("DOMContentLoaded", () => {
+    setPhase("phase2");
+    renderTable();
+  });
+</script>
+
+</body>
+</html>
