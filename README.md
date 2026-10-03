@@ -1,6 +1,16 @@
 # RAG with Evals 🚀
 
-A production-grade, modular Retrieval-Augmented Generation (RAG) system with multi-provider LLM support (**Groq Cloud**, **NVIDIA NIM**, and **Ollama**), persistent vector storage via **ChromaDB**, conversational memory, and an ablation evaluation framework powered by **Ragas**.
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-v0.3-green.svg)](https://python.langchain.com/)
+[![Ragas](https://img.shields.io/badge/Framework-Ragas_Eval-purple.svg)](https://docs.ragas.io/)
+[![ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-orange.svg)](https://www.trychroma.com/)
+[![Groq](https://img.shields.io/badge/Inference-Groq_Cloud-red.svg)](https://groq.com/)
+[![Ollama](https://img.shields.io/badge/Local_LLM-Ollama-black.svg)](https://ollama.com/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
+
+A production-grade, modular Retrieval-Augmented Generation (RAG) system with multi-provider LLM support (**Groq Cloud**, **NVIDIA NIM**, **OpenRouter**, and **Ollama**), persistent vector storage via **ChromaDB**, conversational memory, and an ablation evaluation framework powered by **Ragas**.
+
+> **Key Topics / Focus**: `rag`, `ragas`, `langchain`, `chromadb`, `llm-evaluation`, `hybrid-search`, `reranking`, `streamlit`, `groq`, `ollama`
 
 ---
 
