@@ -116,10 +116,11 @@ def run_evaluation(
     limit: Optional[int] = None,
     delay: float = 2.0,
     top_k: int = 4,
-    retrieval_mode: str = "hybrid"
+    retrieval_mode: str = "hybrid",
+    transform: str = "none"
 ):
     print("=" * 70)
-    print(f"STARTING RAG EVALUATION: MODE = {retrieval_mode.upper()}")
+    print(f"STARTING RAG EVALUATION: MODE = {retrieval_mode.upper()} | TRANSFORM = {transform.upper()}")
     print("=" * 70)
 
     if testset_path is None or not testset_path.exists():
@@ -135,7 +136,7 @@ def run_evaluation(
     print(f"Generator Strategy: {provider.upper()}")
     print(f"Judge Strategy:     {judge_provider.upper()}")
     print(f"Evaluation Samples: {len(test_samples)} golden questions")
-    print(f"Configuration:      Mode={retrieval_mode.upper()}, Top-K={top_k}, Delay={delay}s\n")
+    print(f"Configuration:      Mode={retrieval_mode.upper()}, Transform={transform.upper()}, Top-K={top_k}, Delay={delay}s\n")
 
     vsm = VectorStoreManager()
     memory = ChatHistoryManager()
@@ -179,7 +180,8 @@ def run_evaluation(
         k=top_k,
         retrieval_mode=retrieval_mode,
         candidates_k=15,
-        reranker=reranker_instance
+        reranker=reranker_instance,
+        query_transform_mode=transform
     )
 
     eval_results = []
@@ -206,6 +208,15 @@ def run_evaluation(
 
         # Update chain LLM for current turn
         rag_chain.llm = turn_gen_llm
+        if rag_chain.query_transformer is not None:
+            rag_chain.query_transformer.llm = turn_gen_llm
+            from src.query_transform import HYDE_PROMPT, MULTI_QUERY_PROMPT, STEP_BACK_PROMPT, ROUTER_PROMPT
+            from langchain_core.output_parsers import StrOutputParser
+            rag_chain.query_transformer.hyde_chain = HYDE_PROMPT | turn_gen_llm | StrOutputParser()
+            rag_chain.query_transformer.multi_query_chain = MULTI_QUERY_PROMPT | turn_gen_llm | StrOutputParser()
+            rag_chain.query_transformer.step_back_chain = STEP_BACK_PROMPT | turn_gen_llm | StrOutputParser()
+            rag_chain.query_transformer.router_chain = ROUTER_PROMPT | turn_gen_llm | StrOutputParser()
+
         judge_runner = EVAL_PROMPT | turn_judge_llm
 
         print(f"[{idx+1}/{len(test_samples)}] Testing: \"{question[:55]}...\"")
@@ -321,6 +332,10 @@ def run_evaluation(
         prefix = "baseline_scores"
         title = "BASELINE RAG BENCHMARK"
 
+    if transform != "none":
+        prefix = f"{prefix}_{transform}"
+        title = f"{title} [{transform.upper()} TRANSFORMATION]"
+
     csv_path = results_dir / f"{prefix}_{dataset_slug}.csv"
     try:
         df.to_csv(csv_path, index=False)
@@ -353,8 +368,40 @@ def run_evaluation(
     # Automated Comparative Reporting
     baseline_csv = results_dir / f"baseline_scores_{dataset_slug}.csv"
     hybrid_csv = results_dir / f"hybrid_scores_{dataset_slug}.csv"
+    rerank_csv = results_dir / f"rerank_scores_{dataset_slug}.csv"
 
-    if retrieval_mode in ("hybrid_rerank", "rerank") and baseline_csv.exists() and hybrid_csv.exists():
+    if transform != "none" and rerank_csv.exists():
+        try:
+            r_df = pd.read_csv(rerank_csv)
+            r_rec, r_prec, r_faith, r_rel, r_lat = (
+                r_df["context_recall"].mean(),
+                r_df["context_precision"].mean(),
+                r_df["faithfulness"].mean(),
+                r_df["answer_relevance"].mean(),
+                r_df["latency_seconds"].mean()
+            )
+            comp_md = f"""# Ablation Benchmark: Phase 3 (Rerank) vs Phase 4 ({transform.upper()} Transformation)
+
+**Dataset**: `{dataset_slug}` ($N={len(df)}$)  
+**Provider Strategy**: Round-Robin Resilient Pool (`GROQ`, `NVIDIA`, `OPENROUTER`, `OLLAMA`)  
+**Transformation Engine**: {transform.upper()}
+
+| Metric | Phase 3 (Standard Rerank) | Phase 4 ({transform.upper()} Rerank) | Delta | Technical Assessment |
+| :--- | :---: | :---: | :---: | :--- |
+| **Context Recall** | **{r_rec*100:.2f}%** | **{avg_recall*100:.2f}%** | **{'+' if avg_recall >= r_rec else ''}{(avg_recall - r_rec)*100:.2f}%** | Coverage across transformed candidate query pool. |
+| **Context Precision** | **{r_prec*100:.2f}%** | **{avg_precision*100:.2f}%** | **{'+' if avg_precision >= r_prec else ''}{(avg_precision - r_prec)*100:.2f}%** | Target grounding density at top-k ranks. |
+| **Faithfulness** | **{r_faith*100:.2f}%** | **{avg_faithfulness*100:.2f}%** | **{'+' if avg_faithfulness >= r_faith else ''}{(avg_faithfulness - r_faith)*100:.2f}%** | Hallucination defense and context adherence. |
+| **Answer Relevance** | **{r_rel*100:.2f}%** | **{avg_relevance*100:.2f}%** | **{'+' if avg_relevance >= r_rel else ''}{(avg_relevance - r_rel)*100:.2f}%** | Direct alignment to user intent. |
+| **Average Latency** | **{r_lat:.2f}s** | **{avg_latency:.2f}s** | **{avg_latency - r_lat:+.2f}s** | End-to-end latency including transformation inference. |
+"""
+            comp_path = results_dir / f"phase4_{transform}_vs_rerank.md"
+            with open(comp_path, "w", encoding="utf-8") as f:
+                f.write(comp_md)
+            print(f"\nPhase 4 comparison saved to: {comp_path}")
+        except Exception as e:
+            print(f"Could not generate Phase 4 comparison markdown: {e}")
+
+    elif transform == "none" and retrieval_mode in ("hybrid_rerank", "rerank") and baseline_csv.exists() and hybrid_csv.exists():
         try:
             b_df = pd.read_csv(baseline_csv)
             h_df = pd.read_csv(hybrid_csv)
@@ -434,16 +481,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run RAG evaluation benchmark with multi-provider failover")
     parser.add_argument("--provider", type=str, default="round_robin", choices=["round_robin", "groq", "openrouter", "nvidia", "ollama"], help="LLM generator provider")
     parser.add_argument("--judge-provider", type=str, default="round_robin", choices=["round_robin", "groq", "openrouter", "nvidia", "ollama"], help="LLM judge provider")
-    parser.add_argument("--dataset", type=str, default="amnesty_qa", choices=["amnesty_qa", "siddhesh_forecast"], help="Benchmark dataset")
+    parser.add_argument("--dataset", type=str, default="amnesty_qa", help="Benchmark dataset name in data/testsets/ (e.g. amnesty_qa or custom)")
     parser.add_argument("--mode", "--retrieval-mode", dest="retrieval_mode", type=str, default="hybrid_rerank", choices=["hybrid_rerank", "rerank", "hybrid", "dense"], help="Retrieval mode (hybrid_rerank with Cross-Encoder, hybrid with BM25+RRF, or dense Chroma)")
+    parser.add_argument("--transform", type=str, default="none", choices=["none", "hyde", "multi_query", "step_back", "adaptive"], help="Phase 4 Query Transformation mode (none, hyde, multi_query, step_back, adaptive)")
     parser.add_argument("--limit", type=int, default=10, help="Number of questions to evaluate (default: 10, max: 20)")
     parser.add_argument("--delay", type=float, default=2.0, help="Delay in seconds between calls")
     args = parser.parse_args()
 
-    if args.dataset == "amnesty_qa":
+    # Determine testset path dynamically
+    if args.dataset.endswith(".json"):
+        testset_file = Path(args.dataset)
+        if not testset_file.is_absolute():
+            testset_file = PROJECT_ROOT / "data" / "testsets" / args.dataset
+    elif args.dataset == "amnesty_qa":
         testset_file = PROJECT_ROOT / "data" / "testsets" / "amnesty_qa_eval.json"
     else:
-        testset_file = PROJECT_ROOT / "data" / "testsets" / "siddhesh_forecast_eval.json"
+        testset_file = PROJECT_ROOT / "data" / "testsets" / f"{args.dataset}_eval.json"
 
     run_evaluation(
         provider=args.provider,
@@ -451,5 +504,6 @@ if __name__ == "__main__":
         testset_path=testset_file,
         limit=args.limit,
         delay=args.delay,
-        retrieval_mode=args.retrieval_mode
+        retrieval_mode=args.retrieval_mode,
+        transform=args.transform
     )

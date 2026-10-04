@@ -12,7 +12,8 @@ def get_chat_llm(
     provider: Optional[str] = None,
     model_name: Optional[str] = None,
     temperature: float = 0.2,
-    streaming: bool = True
+    streaming: bool = True,
+    max_tokens: Optional[int] = None
 ) -> BaseChatModel:
     """
     Factory function to instantiate an LLM based on provider:
@@ -22,6 +23,7 @@ def get_chat_llm(
     - ollama: Local open-source models via Ollama
     """
     provider = (provider or settings.default_llm_provider).lower()
+    token_limit = max_tokens or 450
 
     if provider == "groq":
         valid, msg = settings.validate_provider("groq")
@@ -35,7 +37,7 @@ def get_chat_llm(
                 model_name=chosen_model,
                 groq_api_key=settings.groq_api_key,
                 temperature=temperature,
-                max_tokens=350,
+                max_tokens=token_limit,
                 streaming=streaming
             )
         except Exception:
@@ -45,7 +47,7 @@ def get_chat_llm(
                 api_key=settings.groq_api_key,
                 base_url="https://api.groq.com/openai/v1",
                 temperature=temperature,
-                max_tokens=350,
+                max_tokens=token_limit,
                 streaming=streaming
             )
 

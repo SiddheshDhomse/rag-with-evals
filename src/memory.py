@@ -72,7 +72,8 @@ class ChatHistoryManager:
         role: str,
         content: str,
         sources: Optional[List[Dict[str, Any]]] = None,
-        candidates: Optional[List[Dict[str, Any]]] = None
+        candidates: Optional[List[Dict[str, Any]]] = None,
+        transform_audit: Optional[Dict[str, Any]] = None
     ):
         """Appends a new turn to the session file."""
         path = self._get_session_path(session_id)
@@ -83,7 +84,8 @@ class ChatHistoryManager:
             "content": content,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             "sources": sources or [],
-            "candidates": candidates or []
+            "candidates": candidates or [],
+            "transform_audit": transform_audit or {}
         }
         messages.append(msg_entry)
 

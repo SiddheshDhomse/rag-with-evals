@@ -9,6 +9,8 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from src.vectorstore import VectorStoreManager
 from src.memory import ChatHistoryManager
 from src.reranker import CrossEncoderReranker
+from src.query_transform import QueryTransformer
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +144,27 @@ class ConversationalRAGChain:
     4. Full candidate passage audit tracking for observability
     """
 
+# Direct Conversational Prompt for bypassed chitchat queries
+DIRECT_SYSTEM_PROMPT = """You are a helpful, polite, and knowledgeable AI assistant for an enterprise knowledge base.
+Answer the user's conversational query clearly, concisely, and pleasantly."""
+
+DIRECT_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", DIRECT_SYSTEM_PROMPT),
+    MessagesPlaceholder(variable_name="chat_history"),
+    ("human", "{question}"),
+])
+
+
+class ConversationalRAGChain:
+    """
+    Production conversational RAG chain that handles:
+    1. Query reformulation with chat history context
+    2. Phase 4 Query Transformation (HyDE, Multi-Query, Step-Back, or Adaptive Routing)
+    3. Vector store retrieval (Dense, Hybrid BM25+RRF, or Two-Stage Cross-Encoder Rerank)
+    4. Grounded answer generation with streaming and direct chitchat bypass
+    5. Full candidate passage and query transformation audit tracking for observability
+    """
+
     def __init__(
         self,
         llm: BaseChatModel,
@@ -150,7 +173,9 @@ class ConversationalRAGChain:
         k: int = 4,
         retrieval_mode: str = "hybrid_rerank",
         candidates_k: int = 15,
-        reranker: Optional[CrossEncoderReranker] = None
+        reranker: Optional[CrossEncoderReranker] = None,
+        query_transform_mode: str = "none",
+        query_transformer: Optional[QueryTransformer] = None
     ):
         self.llm = llm
         self.vectorstore_manager = vectorstore_manager
@@ -159,9 +184,19 @@ class ConversationalRAGChain:
         self.retrieval_mode = retrieval_mode.lower()
         self.candidates_k = max(candidates_k, k)
         self.reranker = reranker
-        self.last_candidates_audit: List[Dict[str, Any]] = []
+        self.query_transform_mode = (query_transform_mode or settings.query_transform_mode or "none").lower()
 
-        # Chains
+        self.last_candidates_audit: List[Dict[str, Any]] = []
+        self.last_transform_audit: Dict[str, Any] = {}
+
+        if query_transformer is not None:
+            self.query_transformer = query_transformer
+        elif self.llm is not None:
+            self.query_transformer = QueryTransformer(self.llm)
+        else:
+            self.query_transformer = None
+
+        # Contextualize Chain
         if self.llm is not None:
             self.contextualize_chain = CONTEXTUALIZE_Q_PROMPT | self.llm | StrOutputParser()
         else:
@@ -175,6 +210,13 @@ class ConversationalRAGChain:
             formatted.append(f"--- Document [{i+1}] ({source}{page}) ---\n{doc.page_content}")
         return "\n\n".join(formatted)
 
+    def _retrieve_raw_candidates(self, query: str, count: int) -> List[Tuple[Document, float]]:
+        """Retrieves raw scored candidates from vectorstore using active retrieval mode."""
+        if self.retrieval_mode == "dense":
+            return self.vectorstore_manager.similarity_search_with_score(query=query, k=count)
+        else:
+            return self.vectorstore_manager.hybrid_search_with_score(query=query, k=count)
+
     def retrieve_context(
         self,
         question: str,
@@ -183,10 +225,9 @@ class ConversationalRAGChain:
     ) -> Any:
         """
         1. Reformulates query if history exists.
-        2. Retrieves candidate documents using Dense, Hybrid (RRF), or Two-Stage Cross-Encoder.
-        Returns:
-            If return_candidates is False: (standalone_question, sources_list, formatted_context_str)
-            If return_candidates is True:  (standalone_question, sources_list, formatted_context_str, candidates_audit)
+        2. Applies Phase 4 Query Transformation (HyDE, Multi-Query, Step-Back, or Adaptive Routing).
+        3. Retrieves and fuses candidate pools across transformed queries.
+        4. Applies Cross-Encoder Reranking (Phase 3) or rank-based selection.
         """
         history = self.memory_manager.get_langchain_messages(session_id, limit=6)
 
@@ -202,17 +243,117 @@ class ConversationalRAGChain:
                 logger.warning(f"Error reformulating question, using original: {e}")
                 standalone_question = question
 
+        # Initialize Transformation Audit
+        transform_audit = {
+            "mode": self.query_transform_mode,
+            "strategy": "standard",
+            "route": "FACT_LOOKUP",
+            "reasoning": "Standard direct retrieval execution.",
+            "queries": [standalone_question],
+            "hypothetical_doc": None,
+            "sub_queries": [],
+            "step_back_query": None,
+            "direct_bypass": False
+        }
+
+        active_strategy = self.query_transform_mode
+
+        # Step 2A: Adaptive Intent Routing
+        if self.query_transform_mode == "adaptive" and self.query_transformer is not None:
+            route_info = self.query_transformer.route_query(standalone_question)
+            transform_audit["route"] = route_info.get("route", "FACT_LOOKUP")
+            transform_audit["reasoning"] = route_info.get("reasoning", "")
+            active_strategy = route_info.get("strategy", "standard")
+            transform_audit["strategy"] = active_strategy
+
+            if active_strategy == "direct":
+                transform_audit["direct_bypass"] = True
+                self.last_transform_audit = transform_audit
+                self.last_candidates_audit = []
+                if return_candidates:
+                    return standalone_question, [], "", []
+                return standalone_question, [], ""
+
+        elif self.query_transform_mode in ("hyde", "multi_query", "step_back"):
+            active_strategy = self.query_transform_mode
+            transform_audit["strategy"] = active_strategy
+            transform_audit["route"] = active_strategy.upper()
+
         score_label = "score"
         candidates_audit: List[Dict[str, Any]] = []
         docs_with_scores: List[Tuple[Document, float]] = []
 
         try:
-            if self.retrieval_mode == "dense":
-                # Phase 1: Pure Dense Vector Search
-                docs_with_scores = self.vectorstore_manager.similarity_search_with_score(
-                    query=standalone_question,
-                    k=self.k
+            # Step 2B: Candidate Gathering & Fusion across Transformed Queries
+            merged_candidates_dict: Dict[str, Tuple[Document, float]] = {}
+
+            if active_strategy == "hyde" and self.query_transformer is not None:
+                hypo_doc = self.query_transformer.generate_hyde(standalone_question)
+                transform_audit["hypothetical_doc"] = hypo_doc
+                transform_audit["queries"] = [standalone_question, "HYDE: " + hypo_doc[:60] + "..."]
+
+                # Fetch candidates for both raw query and hypothetical document
+                cands_q = self._retrieve_raw_candidates(standalone_question, self.candidates_k)
+                cands_h = self._retrieve_raw_candidates(hypo_doc, self.candidates_k)
+
+                for doc, sc in cands_q + cands_h:
+                    key = doc.page_content.strip()
+                    if key not in merged_candidates_dict or sc > merged_candidates_dict[key][1]:
+                        merged_candidates_dict[key] = (doc, sc)
+
+            elif active_strategy == "multi_query" and self.query_transformer is not None:
+                sub_qs = self.query_transformer.generate_multi_query(
+                    standalone_question,
+                    count=settings.multi_query_count
                 )
+                transform_audit["sub_queries"] = sub_qs
+                transform_audit["queries"] = sub_qs
+
+                k_per = max(4, (self.candidates_k // max(len(sub_qs), 1)) + 2)
+                for sq in sub_qs:
+                    sq_cands = self._retrieve_raw_candidates(sq, k_per)
+                    for doc, sc in sq_cands:
+                        key = doc.page_content.strip()
+                        if key not in merged_candidates_dict or sc > merged_candidates_dict[key][1]:
+                            merged_candidates_dict[key] = (doc, sc)
+
+            elif active_strategy == "step_back" and self.query_transformer is not None:
+                sb_q = self.query_transformer.generate_step_back(standalone_question)
+                transform_audit["step_back_query"] = sb_q
+                transform_audit["queries"] = [standalone_question, sb_q]
+
+                cands_q = self._retrieve_raw_candidates(standalone_question, self.candidates_k)
+                cands_sb = self._retrieve_raw_candidates(sb_q, self.candidates_k)
+
+                for doc, sc in cands_q + cands_sb:
+                    key = doc.page_content.strip()
+                    if key not in merged_candidates_dict or sc > merged_candidates_dict[key][1]:
+                        merged_candidates_dict[key] = (doc, sc)
+
+            else:
+                # Standard single-query retrieval
+                target_k = self.candidates_k if self.retrieval_mode == "hybrid_rerank" else self.k
+                raw_cands = self._retrieve_raw_candidates(standalone_question, target_k)
+                for doc, sc in raw_cands:
+                    merged_candidates_dict[doc.page_content.strip()] = (doc, sc)
+
+            merged_candidates = list(merged_candidates_dict.values())
+
+            # Step 2C: Candidate Ranking & Stage 2 Cross-Encoder Evaluation
+            if self.retrieval_mode == "hybrid_rerank":
+                if self.reranker is None:
+                    self.reranker = CrossEncoderReranker()
+
+                docs_with_scores, candidates_audit = self.reranker.rerank(
+                    query=standalone_question,
+                    docs_with_scores=merged_candidates,
+                    top_k=self.k
+                )
+                score_label = "cross_encoder_score"
+
+            elif self.retrieval_mode == "dense":
+                # Sort descending by cosine similarity / ascending distance
+                docs_with_scores = sorted(merged_candidates, key=lambda x: x[1])[:self.k]
                 score_label = "cosine_distance"
                 for idx, (doc, sc) in enumerate(docs_with_scores):
                     candidates_audit.append({
@@ -229,12 +370,9 @@ class ConversationalRAGChain:
                         "selected": True
                     })
 
-            elif self.retrieval_mode == "hybrid":
-                # Phase 2: Hybrid Search combining Dense + BM25 via Reciprocal Rank Fusion
-                docs_with_scores = self.vectorstore_manager.hybrid_search_with_score(
-                    query=standalone_question,
-                    k=self.k
-                )
+            else:
+                # Hybrid RRF score descending
+                docs_with_scores = sorted(merged_candidates, key=lambda x: x[1], reverse=True)[:self.k]
                 score_label = "rrf_score"
                 for idx, (doc, sc) in enumerate(docs_with_scores):
                     candidates_audit.append({
@@ -251,31 +389,13 @@ class ConversationalRAGChain:
                         "selected": True
                     })
 
-            else:
-                # Phase 3: Two-Stage Hybrid Candidate Retrieval + Cross-Encoder Reranking
-                # Stage 1: Candidate Generation (retrieve top-M candidates)
-                candidates = self.vectorstore_manager.hybrid_search_with_score(
-                    query=standalone_question,
-                    k=self.candidates_k
-                )
-
-                # Stage 2: Cross-Encoder Scoring & Reranking
-                if self.reranker is None:
-                    self.reranker = CrossEncoderReranker()
-
-                docs_with_scores, candidates_audit = self.reranker.rerank(
-                    query=standalone_question,
-                    docs_with_scores=candidates,
-                    top_k=self.k
-                )
-                score_label = "cross_encoder_score"
-
         except Exception as e:
-            logger.error(f"Error retrieving documents with mode '{self.retrieval_mode}': {e}")
+            logger.error(f"Error retrieving documents in mode '{self.retrieval_mode}' / transform '{active_strategy}': {e}")
             docs_with_scores = []
             candidates_audit = []
 
         self.last_candidates_audit = candidates_audit
+        self.last_transform_audit = transform_audit
 
         sources_info: List[Dict[str, Any]] = []
         docs: List[Document] = []
@@ -289,7 +409,7 @@ class ConversationalRAGChain:
                 "content": doc.page_content,
                 "score": round(float(score), 4),
                 "score_type": score_label,
-                "strategy": self.retrieval_mode,
+                "strategy": f"{self.retrieval_mode}+{active_strategy}",
                 "initial_rank": cand_info.get("initial_rank", None),
                 "new_rank": cand_info.get("new_rank", None),
                 "rank_delta": cand_info.get("rank_delta", None),
@@ -309,25 +429,35 @@ class ConversationalRAGChain:
         session_id: str = "default"
     ) -> Generator[str, None, Tuple[str, List[Dict[str, Any]]]]:
         """
-        Streams response tokens while yielding sources and saving candidate audit at the end.
+        Streams response tokens while yielding sources and saving candidate & transform audit at the end.
         """
         standalone_q, sources, context_str = self.retrieve_context(question, session_id)
         history = self.memory_manager.get_langchain_messages(session_id, limit=6)
 
-        qa_chain = QA_PROMPT | self.llm | StrOutputParser()
-
         response_chunks = []
-        for chunk in qa_chain.stream({
-            "context": context_str,
-            "chat_history": history,
-            "question": question
-        }):
-            response_chunks.append(chunk)
-            yield chunk
+
+        # Direct chitchat bypass path
+        if self.last_transform_audit.get("direct_bypass"):
+            direct_chain = DIRECT_PROMPT | self.llm | StrOutputParser()
+            for chunk in direct_chain.stream({
+                "chat_history": history,
+                "question": question
+            }):
+                response_chunks.append(chunk)
+                yield chunk
+        else:
+            qa_chain = QA_PROMPT | self.llm | StrOutputParser()
+            for chunk in qa_chain.stream({
+                "context": context_str,
+                "chat_history": history,
+                "question": question
+            }):
+                response_chunks.append(chunk)
+                yield chunk
 
         full_answer = "".join(response_chunks)
 
-        # Save turn in conversational memory with sources and candidates audit
+        # Save turn in conversational memory with sources, candidates, and transformation audit
         self.memory_manager.add_message(
             session_id,
             role="user",
@@ -338,7 +468,8 @@ class ConversationalRAGChain:
             role="assistant",
             content=full_answer,
             sources=sources,
-            candidates=self.last_candidates_audit
+            candidates=self.last_candidates_audit,
+            transform_audit=self.last_transform_audit
         )
 
         return full_answer, sources
@@ -352,12 +483,19 @@ class ConversationalRAGChain:
         standalone_q, sources, context_str = self.retrieve_context(question, session_id)
         history = self.memory_manager.get_langchain_messages(session_id, limit=6)
 
-        qa_chain = QA_PROMPT | self.llm | StrOutputParser()
-        answer = qa_chain.invoke({
-            "context": context_str,
-            "chat_history": history,
-            "question": question
-        })
+        if self.last_transform_audit.get("direct_bypass"):
+            direct_chain = DIRECT_PROMPT | self.llm | StrOutputParser()
+            answer = direct_chain.invoke({
+                "chat_history": history,
+                "question": question
+            })
+        else:
+            qa_chain = QA_PROMPT | self.llm | StrOutputParser()
+            answer = qa_chain.invoke({
+                "context": context_str,
+                "chat_history": history,
+                "question": question
+            })
 
         # Save turn in conversational memory
         self.memory_manager.add_message(
@@ -370,12 +508,14 @@ class ConversationalRAGChain:
             role="assistant",
             content=answer,
             sources=sources,
-            candidates=self.last_candidates_audit
+            candidates=self.last_candidates_audit,
+            transform_audit=self.last_transform_audit
         )
 
         return {
             "answer": answer,
             "sources": sources,
             "standalone_question": standalone_q,
-            "candidates": self.last_candidates_audit
+            "candidates": self.last_candidates_audit,
+            "transform_audit": self.last_transform_audit
         }

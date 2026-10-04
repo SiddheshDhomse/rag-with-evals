@@ -1,4 +1,5 @@
 import time
+from typing import Dict, Any, List, Optional
 import streamlit as st
 import pandas as pd
 from pathlib import Path
@@ -24,70 +25,223 @@ st.set_page_config(
 
 # Custom CSS for polished production UI
 st.markdown("""
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
+    * {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    code, pre, .mono {
+        font-family: 'JetBrains Mono', monospace !important;
+    }
     .main .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
+        padding-top: 1.2rem;
+        padding-bottom: 2.5rem;
+        max-width: 1200px;
     }
-    .metric-badge {
-        display: inline-block;
-        padding: 4px 12px;
+
+    /* Top Studio Hero Banner */
+    .studio-header {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 16px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        background-color: #f0f2f6;
-        color: #31333F;
-        margin-right: 8px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
     }
-    .source-card {
-        border-left: 3px solid #4CAF50;
-        padding: 8px 12px;
-        margin-bottom: 8px;
-        background-color: rgba(76, 175, 80, 0.05);
-        border-radius: 0 4px 4px 0;
-        font-size: 0.85rem;
+    .studio-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 12px;
     }
+    .studio-logo-icon {
+        font-size: 1.8rem;
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+        border-radius: 12px;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+    }
+    .studio-title {
+        font-size: 1.45rem;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        color: #f8fafc;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .studio-badge-pro {
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        background: rgba(99, 102, 241, 0.2);
+        color: #a5b4fc;
+        border: 1px solid rgba(99, 102, 241, 0.4);
+        padding: 2px 7px;
+        border-radius: 6px;
+    }
+    .studio-subtitle {
+        font-size: 0.82rem;
+        color: #94a3b8;
+        margin-top: 1px;
+    }
+    .status-ribbon {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .status-chip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        color: #cbd5e1;
+    }
+    .chip-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+    .dot-green { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+    .dot-blue { background: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); }
+    .dot-indigo { background: #6366f1; box-shadow: 0 0 8px rgba(99, 102, 241, 0.5); }
+    .dot-purple { background: #a855f7; box-shadow: 0 0 8px rgba(168, 85, 247, 0.5); }
+    .dot-amber { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+
+    /* Stat Cards Grid */
+    .stat-card-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin: 10px 0 16px 0;
+    }
+    .stat-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 14px 16px;
+        transition: all 0.2s ease;
+    }
+    .stat-card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+    }
+    .stat-card-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-bottom: 6px;
+    }
+    .stat-card-val {
+        font-size: 1.6rem;
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        margin-bottom: 4px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .stat-card-sub {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+    .text-indigo { color: #818cf8; }
+    .text-emerald { color: #34d399; }
+    .text-slate { color: #94a3b8; }
+    .text-amber { color: #fbbf24; }
+    .text-purple { color: #c084fc; }
+
+    /* Chunk Inspection Cards */
     .chunk-card-selected {
-        border-left: 4px solid #10b981;
-        background-color: rgba(16, 185, 129, 0.05);
-        padding: 10px 14px;
-        border-radius: 0 8px 8px 0;
-        margin-bottom: 10px;
+        border-left: 3px solid #10b981;
+        background: linear-gradient(90deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.3) 100%);
+        border-top: 1px solid rgba(16, 185, 129, 0.2);
+        border-right: 1px solid rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        padding: 12px 16px;
+        border-radius: 0 10px 10px 0;
+        margin-bottom: 12px;
     }
     .chunk-card-filtered {
-        border-left: 4px solid #94a3b8;
-        background-color: rgba(148, 163, 184, 0.05);
-        padding: 10px 14px;
-        border-radius: 0 8px 8px 0;
-        margin-bottom: 10px;
-        opacity: 0.88;
+        border-left: 3px solid #64748b;
+        background: rgba(15, 23, 42, 0.25);
+        border-top: 1px solid rgba(255, 255, 255, 0.03);
+        border-right: 1px solid rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        padding: 12px 16px;
+        border-radius: 0 10px 10px 0;
+        margin-bottom: 12px;
+        opacity: 0.8;
     }
     .rank-badge-up {
-        background-color: #d1fae5;
-        color: #065f46;
-        padding: 2px 8px;
-        border-radius: 12px;
+        background-color: rgba(16, 185, 129, 0.2);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 2px 7px;
+        border-radius: 10px;
         font-weight: 700;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        font-family: 'JetBrains Mono', monospace;
     }
     .rank-badge-down {
-        background-color: #fee2e2;
-        color: #991b1b;
-        padding: 2px 8px;
-        border-radius: 12px;
+        background-color: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 2px 7px;
+        border-radius: 10px;
         font-weight: 700;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        font-family: 'JetBrains Mono', monospace;
     }
     .rank-badge-same {
-        background-color: #f3f4f6;
-        color: #4b5563;
-        padding: 2px 8px;
-        border-radius: 12px;
+        background-color: rgba(255, 255, 255, 0.06);
+        color: #94a3b8;
+        padding: 2px 7px;
+        border-radius: 10px;
         font-weight: 600;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        font-family: 'JetBrains Mono', monospace;
     }
-    .status-ok { color: #2e7d32; font-weight: bold; }
-    .status-missing { color: #c62828; font-weight: bold; }
+    .status-ok { color: #10b981; font-weight: bold; }
+    .status-missing { color: #f87171; font-weight: bold; }
+    .metric-badge {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 6px 12px;
+        margin-bottom: 6px;
+        font-size: 0.82rem;
+        color: #cbd5e1;
+    }
+    .metric-badge b {
+        color: #38bdf8;
+    }
+    .source-card {
+        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-left: 3px solid #3b82f6;
+        border-radius: 0 8px 8px 0;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+        color: #cbd5e1;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -135,14 +289,37 @@ def render_retrieval_and_reranking_inspection(sources_info, candidates_audit, re
 
     with st.expander(title, expanded=False):
         if is_reranked and candidates_audit:
-            # 1. High-level Summary Metrics
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Stage 1 Candidates", num_candidates, help="Candidate chunks retrieved via Hybrid BM25+Dense RRF")
-            c2.metric("Selected for LLM", num_selected, help="Top chunks with highest Cross-Encoder scores passed to prompt")
+            # 1. High-level Summary Metrics using Custom Frosted Glass Stat Cards
             filtered_count = max(0, num_candidates - num_selected)
-            c3.metric("Noise Filtered", filtered_count, help="Low-relevance chunks discarded to prevent hallucination/distraction")
             promoted_count = sum(1 for c in candidates_audit if c.get("rank_delta", 0) > 0)
-            c4.metric("Rerank Shifts", f"{promoted_count} Promoted", help="Chunks boosted to higher ranks by Cross-Encoder cross-attention")
+
+            st.markdown(
+                f"""
+                <div class="stat-card-row">
+                    <div class="stat-card">
+                        <div class="stat-card-title">Stage 1 Candidates</div>
+                        <div class="stat-card-val text-indigo">{num_candidates}</div>
+                        <div class="stat-card-sub">Hybrid BM25+Dense RRF</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-title">Selected for LLM</div>
+                        <div class="stat-card-val text-emerald">{num_selected}</div>
+                        <div class="stat-card-sub">Cross-Encoder Top Chunks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-title">Distractors Filtered</div>
+                        <div class="stat-card-val text-slate">{filtered_count}</div>
+                        <div class="stat-card-sub">Low Relevance Discarded</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-title">Rerank Shifts</div>
+                        <div class="stat-card-val text-amber">{promoted_count} Promoted</div>
+                        <div class="stat-card-sub">Cross-Attention Re-ordered</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
             # 2. Tabs: Candidate Matrix vs Detailed Chunk View
             tab_matrix, tab_cards = st.tabs(["📊 Candidate Reranking Matrix", "📄 Detailed Chunk Inspection"])
@@ -188,9 +365,9 @@ def render_retrieval_and_reranking_inspection(sources_info, candidates_audit, re
                     badge_cls = "rank-badge-up" if delta > 0 else ("rank-badge-down" if delta < 0 else "rank-badge-same")
                     delta_text = f"▲ +{delta}" if delta > 0 else (f"▼ {delta}" if delta < 0 else "• 0")
                     status_badge = (
-                        "<span style='color: #059669; font-weight: bold;'>✅ INCLUDED IN LLM CONTEXT</span>"
+                        "<span style='color: #10b981; font-weight: bold;'>✅ INCLUDED IN LLM CONTEXT</span>"
                         if is_sel
-                        else "<span style='color: #64748b;'>🚫 FILTERED OUT (DISTRACTOR)</span>"
+                        else "<span style='color: #94a3b8; font-weight: 500;'>🚫 FILTERED OUT (DISTRACTOR)</span>"
                     )
                     page_str = f" | Page {cand['page']}" if cand.get("page") else ""
 
@@ -198,11 +375,11 @@ def render_retrieval_and_reranking_inspection(sources_info, candidates_audit, re
                         f"<div class='{card_cls}'>"
                         f"<b>Rank {cand.get('new_rank')}</b> (Initial: #{cand.get('initial_rank')} <span class='{badge_cls}'>{delta_text}</span>) &bull; "
                         f"{status_badge}<br/>"
-                        f"<small>Source: <code>{cand.get('source', 'Unknown')}</code>{page_str} &bull; "
+                        f"<small style='color: #94a3b8;'>Source: <code style='color: #38bdf8;'>{cand.get('source', 'Unknown')}</code>{page_str} &bull; "
                         f"Cross-Encoder Score: <b>{cand.get('rerank_score', 0.0):+.4f}</b> &bull; "
                         f"Confidence: <b>{cand.get('confidence_pct', 0.0)}%</b> &bull; "
                         f"Stage 1 Score: <code>{cand.get('initial_score', 'N/A')}</code></small><br/>"
-                        f"<div style='margin-top: 6px; font-size: 0.88rem; color: #334155; line-height: 1.45;'>"
+                        f"<div style='margin-top: 8px; font-size: 0.88rem; color: #cbd5e1; line-height: 1.5;'>"
                         f"<i>\"{cand.get('content', '')[:380]}...\"</i>"
                         f"</div>"
                         f"</div>",
@@ -215,11 +392,61 @@ def render_retrieval_and_reranking_inspection(sources_info, candidates_audit, re
                 score_label = "RRF Score" if src.get("score_type") == "rrf_score" else "Distance"
                 st.markdown(
                     f"<div class='source-card'>"
-                    f"<b>Chunk {idx+1}</b> &bull; Source: <code>{src.get('source', 'Unknown')}</code>{page_str} &bull; {score_label}: <code>{src.get('score', 'N/A')}</code><br/>"
+                    f"<b>Chunk {idx+1}</b> &bull; Source: <code style='color: #38bdf8;'>{src.get('source', 'Unknown')}</code>{page_str} &bull; {score_label}: <code>{src.get('score', 'N/A')}</code><br/>"
+                    f"<div style='margin-top: 6px; font-size: 0.88rem; color: #cbd5e1; line-height: 1.45;'>"
                     f"<i>\"{src.get('content', '')[:300]}...\"</i>"
+                    f"</div>"
                     f"</div>",
                     unsafe_allow_html=True
                 )
+
+
+def render_query_transformation_audit(transform_audit: Dict[str, Any]):
+    """Renders Phase 4 Query Transformation and Adaptive Routing transparency audit."""
+    if not transform_audit:
+        return
+
+    strategy = transform_audit.get("strategy", "standard")
+    route = transform_audit.get("route", "FACT_LOOKUP")
+    reasoning = transform_audit.get("reasoning", "")
+    is_direct = transform_audit.get("direct_bypass", False)
+
+    if is_direct:
+        st.markdown(
+            f"<div style='background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 12px 16px; margin: 10px 0;'>"
+            f"<b>⚡ Adaptive Intent Route: <span style='color: #34d399;'>DIRECT BYPASS (0ms Retrieval)</span></b><br/>"
+            f"<small style='color: #94a3b8;'>{reasoning}</small>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+        return
+
+    if strategy in ("hyde", "multi_query", "step_back") or transform_audit.get("mode") == "adaptive":
+        strategy_icon = {
+            "hyde": "🧠 HyDE (Hypothetical Document Embeddings)",
+            "multi_query": "🔀 Multi-Query Decomposition",
+            "step_back": "🔭 Step-Back Principle Retrieval",
+            "standard": "⚡ Standard Direct Retrieval"
+        }.get(strategy, "🔮 Query Transformation")
+
+        title = f"{strategy_icon} &bull; Route: `{route}`"
+
+        with st.expander(title, expanded=False):
+            if reasoning:
+                st.markdown(f"**Router Assessment**: *{reasoning}*")
+
+            if strategy == "hyde" and transform_audit.get("hypothetical_doc"):
+                st.markdown("**Synthetic Document Drafted (bridging vocabulary gap)**:")
+                st.info(transform_audit["hypothetical_doc"])
+
+            elif strategy == "multi_query" and transform_audit.get("sub_queries"):
+                st.markdown("**Parallel Sub-Queries Deconstructed & Fused**:")
+                for i, sq in enumerate(transform_audit["sub_queries"]):
+                    st.markdown(f"- **Sub-Query {i+1}**: `{sq}`")
+
+            elif strategy == "step_back" and transform_audit.get("step_back_query"):
+                st.markdown("**High-Level Conceptual Step-Back Query**:")
+                st.markdown(f"- 🏛️ `{transform_audit['step_back_query']}`")
 
 
 # =====================================================================
@@ -294,6 +521,31 @@ with st.sidebar:
     else:
         selected_retrieval_mode = "dense"
         candidates_k = top_k
+
+    # Phase 4: Query Transformation Strategy Selector
+    transform_strategy_options = [
+        "Standard (Direct Query)",
+        "Adaptive Auto-Router (Auto-Detect Intent & Direct Bypass)",
+        "HyDE (Hypothetical Document Embeddings)",
+        "Multi-Query (Sub-Query Decomposition)",
+        "Step-Back (Conceptual Principle Retrieval)"
+    ]
+    transform_selection = st.selectbox(
+        "🔮 Query Transformation (Phase 4)",
+        options=transform_strategy_options,
+        index=0,
+        help="Advanced query transformation to bridge vocabulary gaps, deconstruct multi-hop queries, or route chitchat directly."
+    )
+    if "Adaptive" in transform_selection:
+        selected_transform_mode = "adaptive"
+    elif "HyDE" in transform_selection:
+        selected_transform_mode = "hyde"
+    elif "Multi-Query" in transform_selection:
+        selected_transform_mode = "multi_query"
+    elif "Step-Back" in transform_selection:
+        selected_transform_mode = "step_back"
+    else:
+        selected_transform_mode = "none"
 
     st.markdown("---")
 
@@ -394,20 +646,50 @@ with st.sidebar:
 # =====================================================================
 # Main Chat Area
 # =====================================================================
-st.header("Retrieval-Augmented Generation (RAG) Studio")
+mode_label = "HYBRID + RERANK (P3)" if "Rerank" in retrieval_mode_selection else ("HYBRID (P2)" if "Hybrid" in retrieval_mode_selection else "DENSE (P1)")
+transform_badge = selected_transform_mode.upper() if selected_transform_mode != "none" else "STANDARD"
 
-col_info1, col_info2, col_info3, col_info4 = st.columns(4)
-with col_info1:
-    st.caption(f"**Provider**: `{selected_provider.upper()}`")
-with col_info2:
-    st.caption(f"**Model**: `{selected_model}`")
-with col_info3:
-    mode_label = "HYBRID + RERANK (PHASE 3)" if "Rerank" in retrieval_mode_selection else ("HYBRID (PHASE 2)" if "Hybrid" in retrieval_mode_selection else "DENSE (PHASE 1)")
-    st.caption(f"**Strategy**: `{mode_label}`")
-with col_info4:
-    st.caption(f"**Session**: `{st.session_state.current_session_id}`")
-
-st.markdown("---")
+st.markdown(
+    f"""
+    <div class="studio-header">
+        <div class="studio-title-wrap">
+            <div class="studio-logo-icon">🧠</div>
+            <div>
+                <div class="studio-title">
+                    Enterprise RAG Studio
+                    <span class="studio-badge-pro">PHASE 4 ACTIVE</span>
+                </div>
+                <div class="studio-subtitle">
+                    Production Retrieval-Augmented Generation with Two-Stage Cross-Encoder Reranking & Adaptive Query Routing
+                </div>
+            </div>
+        </div>
+        <div class="status-ribbon">
+            <div class="status-chip">
+                <span class="chip-dot dot-blue"></span>
+                <span>Provider: <b>{selected_provider.upper()}</b></span>
+            </div>
+            <div class="status-chip">
+                <span class="chip-dot dot-indigo"></span>
+                <span>Model: <code>{selected_model}</code></span>
+            </div>
+            <div class="status-chip">
+                <span class="chip-dot dot-green"></span>
+                <span>Retrieval: <b>{mode_label}</b></span>
+            </div>
+            <div class="status-chip">
+                <span class="chip-dot dot-purple"></span>
+                <span>Transform: <b>{transform_badge}</b></span>
+            </div>
+            <div class="status-chip">
+                <span class="chip-dot dot-amber"></span>
+                <span>Session: <code>{st.session_state.current_session_id}</code></span>
+            </div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # Load existing messages for this session
 messages = memory.get_messages(st.session_state.current_session_id)
@@ -417,10 +699,13 @@ for msg in messages:
     content = msg.get("content", "")
     sources = msg.get("sources", [])
     candidates = msg.get("candidates", [])
+    transform_audit = msg.get("transform_audit", {})
 
-    with st.chat_message(role):
+    with st.chat_message(role, avatar="👤" if role == "user" else "⚡"):
         st.markdown(content)
-        if sources or candidates:
+        if transform_audit:
+            render_query_transformation_audit(transform_audit)
+        if (sources or candidates) and not transform_audit.get("direct_bypass"):
             render_retrieval_and_reranking_inspection(sources, candidates, selected_retrieval_mode)
 
 
@@ -431,15 +716,15 @@ user_query = st.chat_input("Ask a question about your knowledge base...")
 
 if user_query:
     # 1. Render user message in chat
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar="👤"):
         st.markdown(user_query)
 
     # 2. Check prerequisites
     if not is_valid:
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar="⚡"):
             st.error(f"Cannot generate answer: {validation_msg}. Please configure your API key in the `.env` file.")
     elif kb_stats["total_chunks"] == 0:
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar="⚡"):
             st.warning("Your Knowledge Base is currently empty! Please upload a document or click **'Seed Amnesty QA Dataset'** in the sidebar to start asking questions.")
     else:
         # 3. Initialize LLM & RAG Chain
@@ -457,15 +742,20 @@ if user_query:
                 k=top_k,
                 retrieval_mode=selected_retrieval_mode,
                 candidates_k=candidates_k,
-                reranker=reranker
+                reranker=reranker,
+                query_transform_mode=selected_transform_mode
             )
 
             # 4. Two-Stage Retrieval & Answer Streaming
-            with st.chat_message("assistant"):
+            with st.chat_message("assistant", avatar="⚡"):
                 spinner_text = (
-                    f"Retrieving {candidates_k} candidate passages & reranking with Cross-Encoder..."
-                    if "Rerank" in retrieval_mode_selection
-                    else "Retrieving relevant passages & formulating response..."
+                    f"Applying {selected_transform_mode.upper()} transformation & retrieving {candidates_k} candidate passages..."
+                    if selected_transform_mode != "none"
+                    else (
+                        f"Retrieving {candidates_k} candidate passages & reranking with Cross-Encoder..."
+                        if "Rerank" in retrieval_mode_selection
+                        else "Retrieving relevant passages & formulating response..."
+                    )
                 )
                 with st.spinner(spinner_text):
                     standalone_q, sources_info, context_str, candidates_audit = rag_chain.retrieve_context(
@@ -480,22 +770,36 @@ if user_query:
 
                 # Stream token-by-token
                 history = memory.get_langchain_messages(st.session_state.current_session_id, limit=6)
-                stream_runnable = QA_PROMPT | rag_chain.llm | StrOutputParser()
 
-                def generate_response():
-                    for chunk in stream_runnable.stream({
-                        "context": context_str,
-                        "chat_history": history,
-                        "question": user_query
-                    }):
-                        yield chunk
+                if rag_chain.last_transform_audit.get("direct_bypass"):
+                    from src.chain import DIRECT_PROMPT
+                    stream_runnable = DIRECT_PROMPT | rag_chain.llm | StrOutputParser()
+                    def generate_response():
+                        for chunk in stream_runnable.stream({
+                            "chat_history": history,
+                            "question": user_query
+                        }):
+                            yield chunk
+                else:
+                    stream_runnable = QA_PROMPT | rag_chain.llm | StrOutputParser()
+                    def generate_response():
+                        for chunk in stream_runnable.stream({
+                            "context": context_str,
+                            "chat_history": history,
+                            "question": user_query
+                        }):
+                            yield chunk
 
                 full_answer = st.write_stream(generate_response)
 
-                # Display retrieved sources & candidate reranking inspection
-                render_retrieval_and_reranking_inspection(sources_info, candidates_audit, selected_retrieval_mode)
+                # Display query transformation audit
+                render_query_transformation_audit(rag_chain.last_transform_audit)
 
-                # Persist turn in conversational memory with sources & candidates audit
+                # Display retrieved sources & candidate reranking inspection (if not direct bypass)
+                if not rag_chain.last_transform_audit.get("direct_bypass"):
+                    render_retrieval_and_reranking_inspection(sources_info, candidates_audit, selected_retrieval_mode)
+
+                # Persist turn in conversational memory with sources, candidates & transform audit
                 memory.add_message(
                     st.session_state.current_session_id,
                     role="user",
@@ -506,9 +810,10 @@ if user_query:
                     role="assistant",
                     content=full_answer,
                     sources=sources_info,
-                    candidates=candidates_audit
+                    candidates=candidates_audit,
+                    transform_audit=rag_chain.last_transform_audit
                 )
 
         except Exception as e:
-            with st.chat_message("assistant"):
+            with st.chat_message("assistant", avatar="⚡"):
                 st.error(f"Error during RAG execution: {str(e)}")

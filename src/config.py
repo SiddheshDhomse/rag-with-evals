@@ -40,6 +40,11 @@ class Settings:
     rerank_top_k: int = field(default_factory=lambda: int(os.getenv("RERANK_TOP_K", "4")))
     rerank_candidates_k: int = field(default_factory=lambda: int(os.getenv("RERANK_CANDIDATES_K", "15")))
 
+    # Query Transformation & Adaptive Routing Settings (Phase 4)
+    query_transform_mode: str = field(default_factory=lambda: os.getenv("QUERY_TRANSFORM_MODE", "none").lower())
+    multi_query_count: int = field(default_factory=lambda: int(os.getenv("MULTI_QUERY_COUNT", "3")))
+    hyde_max_tokens: int = field(default_factory=lambda: int(os.getenv("HYDE_MAX_TOKENS", "180")))
+
     # Vector store defaults
     collection_name: str = field(default_factory=lambda: os.getenv("COLLECTION_NAME", "rag_knowledge_base"))
 
