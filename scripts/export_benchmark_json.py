@@ -4,7 +4,7 @@ from pathlib import Path
 
 # Paths
 ROOT = Path(__file__).resolve().parent.parent
-BENCH_DIR = ROOT / "evals" / "benchmark_results"
+BENCH_DIR = ROOT / "results" if (ROOT / "results").exists() else ROOT / "evals" / "benchmark_results"
 
 p1_path = BENCH_DIR / "baseline_scores_amnesty_qa_eval.csv"
 p2_path = BENCH_DIR / "hybrid_scores_amnesty_qa_eval.csv"

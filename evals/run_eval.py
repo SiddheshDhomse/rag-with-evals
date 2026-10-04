@@ -318,7 +318,7 @@ def run_evaluation(
 
     # 4. Aggregate & Output Scorecard
     df = pd.DataFrame(eval_results)
-    results_dir = PROJECT_ROOT / "evals" / "benchmark_results"
+    results_dir = PROJECT_ROOT / "results" if (PROJECT_ROOT / "results").exists() else PROJECT_ROOT / "evals" / "benchmark_results"
     results_dir.mkdir(parents=True, exist_ok=True)
     dataset_slug = testset_path.stem
 
