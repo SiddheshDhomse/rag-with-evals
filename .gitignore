@@ -67,4 +67,5 @@ evals/benchmark_results/*original*.csv
 samples_extracted.js
 index.html
 build_index.py
+test_script.js
 
