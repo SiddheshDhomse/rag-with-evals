@@ -58,6 +58,8 @@ htmlcov/
 Thumbs.db
 desktop.ini
 # Local standalone visualizers & backups (do not push)
+eval_dashboard*.html
+rag-pipeline-animation*.html
 round_robin_pipeline.html
 hybrid_search_pipeline.html
 evals/benchmark_results/*original*.csv
