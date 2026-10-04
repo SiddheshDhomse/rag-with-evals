@@ -1,13 +1,16 @@
 import time
 import streamlit as st
+import pandas as pd
 from pathlib import Path
 
 from src.config import settings
 from src.models import get_chat_llm, get_embedding_model
 from src.vectorstore import VectorStoreManager
 from src.memory import ChatHistoryManager
-from src.chain import ConversationalRAGChain
+from src.chain import ConversationalRAGChain, QA_PROMPT
+from src.reranker import CrossEncoderReranker
 from src.utils import load_file_to_documents, load_amnesty_qa_dataset
+from langchain_core.output_parsers import StrOutputParser
 
 # =====================================================================
 # Page Configuration & Styling
@@ -44,6 +47,45 @@ st.markdown("""
         border-radius: 0 4px 4px 0;
         font-size: 0.85rem;
     }
+    .chunk-card-selected {
+        border-left: 4px solid #10b981;
+        background-color: rgba(16, 185, 129, 0.05);
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin-bottom: 10px;
+    }
+    .chunk-card-filtered {
+        border-left: 4px solid #94a3b8;
+        background-color: rgba(148, 163, 184, 0.05);
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin-bottom: 10px;
+        opacity: 0.88;
+    }
+    .rank-badge-up {
+        background-color: #d1fae5;
+        color: #065f46;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+    .rank-badge-down {
+        background-color: #fee2e2;
+        color: #991b1b;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+    .rank-badge-same {
+        background-color: #f3f4f6;
+        color: #4b5563;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
     .status-ok { color: #2e7d32; font-weight: bold; }
     .status-missing { color: #c62828; font-weight: bold; }
 </style>
@@ -61,12 +103,123 @@ def init_vectorstore():
 def init_memory():
     return ChatHistoryManager()
 
+@st.cache_resource(show_spinner=False)
+def init_reranker():
+    return CrossEncoderReranker(model_name=settings.reranker_model_name)
+
 vsm = init_vectorstore()
 memory = init_memory()
+reranker = init_reranker()
 
 # Session State for UI controls
 if "current_session_id" not in st.session_state:
     st.session_state.current_session_id = "default"
+
+
+# =====================================================================
+# Helper: Candidate Chunks & Reranker Diagnostics Renderer
+# =====================================================================
+def render_retrieval_and_reranking_inspection(sources_info, candidates_audit, retrieval_mode):
+    if not sources_info and not candidates_audit:
+        return
+
+    num_selected = len(sources_info)
+    num_candidates = len(candidates_audit) if candidates_audit else num_selected
+    is_reranked = "rerank" in str(retrieval_mode).lower() or any(c.get("rank_delta") != 0 for c in (candidates_audit or []))
+
+    title = (
+        f"🔀 Retrieval & Reranker Diagnostics ({num_selected} in LLM Context | {num_candidates} Candidates Analyzed)"
+        if is_reranked
+        else f"🔍 Retrieved Sources ({num_selected} chunks)"
+    )
+
+    with st.expander(title, expanded=False):
+        if is_reranked and candidates_audit:
+            # 1. High-level Summary Metrics
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Stage 1 Candidates", num_candidates, help="Candidate chunks retrieved via Hybrid BM25+Dense RRF")
+            c2.metric("Selected for LLM", num_selected, help="Top chunks with highest Cross-Encoder scores passed to prompt")
+            filtered_count = max(0, num_candidates - num_selected)
+            c3.metric("Noise Filtered", filtered_count, help="Low-relevance chunks discarded to prevent hallucination/distraction")
+            promoted_count = sum(1 for c in candidates_audit if c.get("rank_delta", 0) > 0)
+            c4.metric("Rerank Shifts", f"{promoted_count} Promoted", help="Chunks boosted to higher ranks by Cross-Encoder cross-attention")
+
+            # 2. Tabs: Candidate Matrix vs Detailed Chunk View
+            tab_matrix, tab_cards = st.tabs(["📊 Candidate Reranking Matrix", "📄 Detailed Chunk Inspection"])
+
+            with tab_matrix:
+                matrix_rows = []
+                for cand in candidates_audit:
+                    delta = cand.get("rank_delta", 0)
+                    if delta > 0:
+                        shift_str = f"▲ +{delta}"
+                    elif delta < 0:
+                        shift_str = f"▼ {delta}"
+                    else:
+                        shift_str = "• 0"
+
+                    status_str = "✅ Selected (LLM Context)" if cand.get("selected") else "🚫 Filtered Out"
+                    rank_val = cand.get("new_rank")
+                    rank_icon = (
+                        "🥇 #1" if rank_val == 1
+                        else ("🥈 #2" if rank_val == 2
+                        else ("🥉 #3" if rank_val == 3
+                        else f"#{rank_val}"))
+                    )
+
+                    matrix_rows.append({
+                        "Reranked #": rank_icon,
+                        "Shift": shift_str,
+                        "Initial #": f"#{cand.get('initial_rank')}",
+                        "Cross-Encoder Score": f"{cand.get('rerank_score', 0.0):+.4f}",
+                        "Semantic Confidence": f"{cand.get('confidence_pct', 0.0):.1f}%",
+                        "Stage 1 Score": f"{cand.get('initial_score', 0.0):.4f}",
+                        "Status": status_str,
+                        "Source": f"{cand.get('source', 'Unknown')}" + (f" (p.{cand.get('page')})" if cand.get("page") else "")
+                    })
+                df_matrix = pd.DataFrame(matrix_rows)
+                st.dataframe(df_matrix, use_container_width=True, hide_index=True)
+
+            with tab_cards:
+                for cand in candidates_audit:
+                    is_sel = cand.get("selected", False)
+                    card_cls = "chunk-card-selected" if is_sel else "chunk-card-filtered"
+                    delta = cand.get("rank_delta", 0)
+                    badge_cls = "rank-badge-up" if delta > 0 else ("rank-badge-down" if delta < 0 else "rank-badge-same")
+                    delta_text = f"▲ +{delta}" if delta > 0 else (f"▼ {delta}" if delta < 0 else "• 0")
+                    status_badge = (
+                        "<span style='color: #059669; font-weight: bold;'>✅ INCLUDED IN LLM CONTEXT</span>"
+                        if is_sel
+                        else "<span style='color: #64748b;'>🚫 FILTERED OUT (DISTRACTOR)</span>"
+                    )
+                    page_str = f" | Page {cand['page']}" if cand.get("page") else ""
+
+                    st.markdown(
+                        f"<div class='{card_cls}'>"
+                        f"<b>Rank {cand.get('new_rank')}</b> (Initial: #{cand.get('initial_rank')} <span class='{badge_cls}'>{delta_text}</span>) &bull; "
+                        f"{status_badge}<br/>"
+                        f"<small>Source: <code>{cand.get('source', 'Unknown')}</code>{page_str} &bull; "
+                        f"Cross-Encoder Score: <b>{cand.get('rerank_score', 0.0):+.4f}</b> &bull; "
+                        f"Confidence: <b>{cand.get('confidence_pct', 0.0)}%</b> &bull; "
+                        f"Stage 1 Score: <code>{cand.get('initial_score', 'N/A')}</code></small><br/>"
+                        f"<div style='margin-top: 6px; font-size: 0.88rem; color: #334155; line-height: 1.45;'>"
+                        f"<i>\"{cand.get('content', '')[:380]}...\"</i>"
+                        f"</div>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+        else:
+            # Fallback for baseline dense or hybrid without reranker
+            for idx, src in enumerate(sources_info):
+                page_str = f" | Page {src['page']}" if src.get("page") else ""
+                score_label = "RRF Score" if src.get("score_type") == "rrf_score" else "Distance"
+                st.markdown(
+                    f"<div class='source-card'>"
+                    f"<b>Chunk {idx+1}</b> &bull; Source: <code>{src.get('source', 'Unknown')}</code>{page_str} &bull; {score_label}: <code>{src.get('score', 'N/A')}</code><br/>"
+                    f"<i>\"{src.get('content', '')[:300]}...\"</i>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
 
 
 # =====================================================================
@@ -110,16 +263,37 @@ with st.sidebar:
     with col_temp:
         temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.1, step=0.05)
     with col_k:
-        top_k = st.slider("Top K Chunks", min_value=1, max_value=10, value=4, step=1)
+        top_k = st.slider("Final Top K Chunks", min_value=1, max_value=10, value=4, step=1)
 
-    # Retrieval Strategy (Phase 2 Hybrid Search)
+    # Retrieval Strategy Selector (Phases 1, 2, 3)
+    retrieval_strategy_options = [
+        "Hybrid + Cross-Encoder Rerank (Phase 3)",
+        "Hybrid Search (BM25 + Dense RRF - Phase 2)",
+        "Dense Only (Vector Baseline - Phase 1)"
+    ]
     retrieval_mode_selection = st.radio(
         "Retrieval Strategy",
-        options=["Hybrid (BM25 + Dense RRF)", "Dense Only (Vector)"],
+        options=retrieval_strategy_options,
         index=0,
-        help="Hybrid combines BM25 keyword matching with dense embeddings using Reciprocal Rank Fusion."
+        help="Phase 3 Two-Stage Reranking retrieves broad candidate chunks and re-scores with cross-attention for maximum precision."
     )
-    selected_retrieval_mode = "hybrid" if "Hybrid" in retrieval_mode_selection else "dense"
+
+    if "Rerank" in retrieval_mode_selection:
+        selected_retrieval_mode = "hybrid_rerank"
+        candidates_k = st.slider(
+            "Stage 1 Candidates (M)",
+            min_value=max(top_k, 6),
+            max_value=25,
+            value=max(top_k, 15),
+            step=1,
+            help="High-recall candidate chunks retrieved via BM25 + Dense RRF before Cross-Encoder scoring."
+        )
+    elif "Hybrid" in retrieval_mode_selection:
+        selected_retrieval_mode = "hybrid"
+        candidates_k = top_k
+    else:
+        selected_retrieval_mode = "dense"
+        candidates_k = top_k
 
     st.markdown("---")
 
@@ -180,11 +354,14 @@ with st.sidebar:
 
     # 3. Session & Chat History Management
     st.subheader("💬 Chat Sessions")
-    sessions = memory.list_sessions()
+    sessions = memory.list_sessions(include_internal=False)
+    if st.session_state.current_session_id not in sessions:
+        sessions.append(st.session_state.current_session_id)
+        sessions = sorted(list(set(sessions)))
 
     col_sess, col_new = st.columns([3, 1])
     with col_sess:
-        current_idx = sessions.index(st.session_state.current_session_id) if st.session_state.current_session_id in sessions else 0
+        current_idx = sessions.index(st.session_state.current_session_id)
         selected_session = st.selectbox(
             "Select Session",
             options=sessions,
@@ -197,13 +374,21 @@ with st.sidebar:
 
     with col_new:
         if st.button("➕ New", help="Start a new chat session"):
-            new_id = f"chat_{len(sessions) + 1}"
+            new_id = memory.create_new_session()
             st.session_state.current_session_id = new_id
             st.rerun()
 
-    if st.button("🧹 Clear Current History", use_container_width=True):
-        memory.clear_session(st.session_state.current_session_id)
-        st.rerun()
+    col_clear, col_del = st.columns(2)
+    with col_clear:
+        if st.button("🧹 Clear", help="Clear messages in this session", use_container_width=True):
+            memory.clear_session(st.session_state.current_session_id)
+            st.rerun()
+    with col_del:
+        is_default = (st.session_state.current_session_id == "default")
+        if st.button("🗑️ Delete", help="Delete this session", use_container_width=True, disabled=is_default):
+            memory.delete_session(st.session_state.current_session_id)
+            st.session_state.current_session_id = "default"
+            st.rerun()
 
 
 # =====================================================================
@@ -217,7 +402,8 @@ with col_info1:
 with col_info2:
     st.caption(f"**Model**: `{selected_model}`")
 with col_info3:
-    st.caption(f"**Strategy**: `{selected_retrieval_mode.upper()}`")
+    mode_label = "HYBRID + RERANK (PHASE 3)" if "Rerank" in retrieval_mode_selection else ("HYBRID (PHASE 2)" if "Hybrid" in retrieval_mode_selection else "DENSE (PHASE 1)")
+    st.caption(f"**Strategy**: `{mode_label}`")
 with col_info4:
     st.caption(f"**Session**: `{st.session_state.current_session_id}`")
 
@@ -230,21 +416,12 @@ for msg in messages:
     role = msg.get("role")
     content = msg.get("content", "")
     sources = msg.get("sources", [])
+    candidates = msg.get("candidates", [])
 
     with st.chat_message(role):
         st.markdown(content)
-        if sources:
-            with st.expander(f"🔍 Retrieved Sources ({len(sources)} chunks)", expanded=False):
-                for idx, src in enumerate(sources):
-                    page_str = f" | Page {src['page']}" if src.get("page") else ""
-                    score_label = "RRF Score" if src.get("score_type") == "rrf_score" else "Distance"
-                    st.markdown(
-                        f"<div class='source-card'>"
-                        f"<b>Chunk {idx+1}</b> &bull; Source: <code>{src.get('source', 'Unknown')}</code>{page_str} &bull; {score_label}: <code>{src.get('score', 'N/A')}</code><br/>"
-                        f"<i>\"{src.get('content', '')[:300]}...\"</i>"
-                        f"</div>",
-                        unsafe_allow_html=True
-                    )
+        if sources or candidates:
+            render_retrieval_and_reranking_inspection(sources, candidates, selected_retrieval_mode)
 
 
 # =====================================================================
@@ -278,15 +455,23 @@ if user_query:
                 vectorstore_manager=vsm,
                 memory_manager=memory,
                 k=top_k,
-                retrieval_mode=selected_retrieval_mode
+                retrieval_mode=selected_retrieval_mode,
+                candidates_k=candidates_k,
+                reranker=reranker
             )
 
-            # 4. Stream response and render sources
+            # 4. Two-Stage Retrieval & Answer Streaming
             with st.chat_message("assistant"):
-                with st.spinner("Retrieving relevant passages & formulating response..."):
-                    standalone_q, sources_info, context_str = rag_chain.retrieve_context(
+                spinner_text = (
+                    f"Retrieving {candidates_k} candidate passages & reranking with Cross-Encoder..."
+                    if "Rerank" in retrieval_mode_selection
+                    else "Retrieving relevant passages & formulating response..."
+                )
+                with st.spinner(spinner_text):
+                    standalone_q, sources_info, context_str, candidates_audit = rag_chain.retrieve_context(
                         question=user_query,
-                        session_id=st.session_state.current_session_id
+                        session_id=st.session_state.current_session_id,
+                        return_candidates=True
                     )
 
                 # Show standalone question if query was reformulated
@@ -295,12 +480,7 @@ if user_query:
 
                 # Stream token-by-token
                 history = memory.get_langchain_messages(st.session_state.current_session_id, limit=6)
-                qa_chain = rag_chain.llm
-
-                from src.chain import QA_PROMPT
-                from langchain_core.output_parsers import StrOutputParser
-
-                stream_runnable = QA_PROMPT | qa_chain | StrOutputParser()
+                stream_runnable = QA_PROMPT | rag_chain.llm | StrOutputParser()
 
                 def generate_response():
                     for chunk in stream_runnable.stream({
@@ -312,23 +492,22 @@ if user_query:
 
                 full_answer = st.write_stream(generate_response)
 
-                # Display retrieved sources
-                if sources_info:
-                    with st.expander(f"🔍 Retrieved Sources ({len(sources_info)} chunks)", expanded=False):
-                        for idx, src in enumerate(sources_info):
-                            page_str = f" | Page {src['page']}" if src.get("page") else ""
-                            score_label = "RRF Score" if src.get("score_type") == "rrf_score" else "Distance"
-                            st.markdown(
-                                f"<div class='source-card'>"
-                                f"<b>Chunk {idx+1}</b> &bull; Source: <code>{src.get('source', 'Unknown')}</code>{page_str} &bull; {score_label}: <code>{src.get('score', 'N/A')}</code><br/>"
-                                f"<i>\"{src.get('content', '')[:300]}...\"</i>"
-                                f"</div>",
-                                unsafe_allow_html=True
-                            )
+                # Display retrieved sources & candidate reranking inspection
+                render_retrieval_and_reranking_inspection(sources_info, candidates_audit, selected_retrieval_mode)
 
-                # Persist turn in conversational memory
-                memory.add_message(st.session_state.current_session_id, role="user", content=user_query)
-                memory.add_message(st.session_state.current_session_id, role="assistant", content=full_answer, sources=sources_info)
+                # Persist turn in conversational memory with sources & candidates audit
+                memory.add_message(
+                    st.session_state.current_session_id,
+                    role="user",
+                    content=user_query
+                )
+                memory.add_message(
+                    st.session_state.current_session_id,
+                    role="assistant",
+                    content=full_answer,
+                    sources=sources_info,
+                    candidates=candidates_audit
+                )
 
         except Exception as e:
             with st.chat_message("assistant"):

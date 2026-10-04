@@ -23,13 +23,20 @@ class ChatHistoryManager:
             safe_id = "default"
         return self.history_dir / f"{safe_id}.json"
 
-    def list_sessions(self) -> List[str]:
-        """Lists all existing conversation session IDs."""
+    def list_sessions(self, include_internal: bool = False) -> List[str]:
+        """Lists all existing conversation session IDs, filtering out internal eval runs by default."""
         files = list(self.history_dir.glob("*.json"))
         sessions = [f.stem for f in files]
+        if not include_internal:
+            sessions = [
+                s for s in sessions
+                if not s.startswith("eval_") and not s.startswith("test_") and not s.startswith("ragas_")
+            ]
         if not sessions:
             sessions = ["default"]
-        return sorted(sessions)
+        elif "default" not in sessions:
+            sessions.insert(0, "default")
+        return sorted(list(set(sessions)))
 
     def get_messages(self, session_id: str = "default") -> List[Dict[str, Any]]:
         """Loads all message dicts for a given session."""
@@ -64,7 +71,8 @@ class ChatHistoryManager:
         session_id: str,
         role: str,
         content: str,
-        sources: Optional[List[Dict[str, Any]]] = None
+        sources: Optional[List[Dict[str, Any]]] = None,
+        candidates: Optional[List[Dict[str, Any]]] = None
     ):
         """Appends a new turn to the session file."""
         path = self._get_session_path(session_id)
@@ -74,7 +82,8 @@ class ChatHistoryManager:
             "role": role,
             "content": content,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "sources": sources or []
+            "sources": sources or [],
+            "candidates": candidates or []
         }
         messages.append(msg_entry)
 
@@ -82,11 +91,21 @@ class ChatHistoryManager:
             json.dump({"session_id": session_id, "messages": messages}, f, indent=2, ensure_ascii=False)
 
     def clear_session(self, session_id: str):
-        """Clears all messages from a specific session."""
+        """Clears all messages from a specific session or initializes an empty one on disk."""
         path = self._get_session_path(session_id)
-        if path.exists():
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump({"session_id": session_id, "messages": []}, f, indent=2)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"session_id": session_id, "messages": []}, f, indent=2)
+
+    def create_new_session(self) -> str:
+        """Generates a unique chat session ID and initializes its file on disk."""
+        existing = self.list_sessions(include_internal=False)
+        idx = 1
+        while f"chat_{idx}" in existing:
+            idx += 1
+        new_id = f"chat_{idx}"
+        self.clear_session(new_id)
+        return new_id
 
     def delete_session(self, session_id: str):
         """Deletes a session file permanently."""
