@@ -57,3 +57,8 @@ htmlcov/
 .DS_Store
 Thumbs.db
 desktop.ini
+# Local standalone visualizers & backups (do not push)
+round_robin_pipeline.html
+hybrid_search_pipeline.html
+evals/benchmark_results/*original*.csv
+

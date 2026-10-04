@@ -7,10 +7,11 @@ on golden benchmark testsets using LLM-as-a-Judge across 4 core RAG metrics:
   3. Faithfulness: Did the LLM answer strictly from retrieved context without hallucinations?
   4. Answer Relevance: Did the answer directly address the prompt?
 
-Output:
-  - Console Scorecard
-  - evals/benchmark_results/hybrid_scores_{dataset}.csv (or baseline_scores_{dataset}.csv)
-  - evals/benchmark_results/phase2_hybrid_vs_baseline.md
+Features:
+  - Multi-Provider Round-Robin Pooling (Groq, NVIDIA NIM, OpenRouter, Ollama)
+  - Automatic LangChain with_fallbacks() failover protection against 429 rate limits
+  - Session-isolated evaluation runs to prevent cross-question contamination
+  - Automated comparative ablation scorecard generation
 """
 
 import sys
@@ -69,8 +70,48 @@ Respond ONLY with valid JSON in this exact structure:
 """)
 
 
+class ResilientProviderPool:
+    """
+    Manages round-robin rotation with native LangChain with_fallbacks()
+    across Groq, NVIDIA NIM, OpenRouter, and local Ollama.
+    """
+
+    def __init__(self, providers: Optional[List[str]] = None, temperature: float = 0.1):
+        candidate_providers = providers or ["groq", "nvidia", "openrouter", "ollama"]
+        self.temperature = temperature
+        self.instances: Dict[str, Any] = {}
+
+        print("Initializing Resilient Provider Pool:")
+        for p in candidate_providers:
+            try:
+                llm = get_chat_llm(p, temperature=temperature)
+                self.instances[p] = llm
+                print(f"  + Provider registered: {p.upper()}")
+            except Exception as e:
+                print(f"  - Provider skipped ({p.upper()}): {e}")
+
+        self.healthy_providers = list(self.instances.keys())
+        if not self.healthy_providers:
+            raise RuntimeError("No healthy providers available for Provider Pool!")
+
+    def get_resilient_llm(self, step_idx: int):
+        n = len(self.healthy_providers)
+        order = [self.healthy_providers[(step_idx + offset) % n] for offset in range(n)]
+        primary_name = order[0]
+        primary_llm = self.instances[primary_name]
+
+        fallback_llms = [self.instances[name] for name in order[1:]]
+        if fallback_llms:
+            resilient_llm = primary_llm.with_fallbacks(fallback_llms)
+        else:
+            resilient_llm = primary_llm
+
+        return resilient_llm, primary_name
+
+
 def run_evaluation(
-    provider: str = "groq",
+    provider: str = "round_robin",
+    judge_provider: str = "round_robin",
     testset_path: Path = None,
     limit: Optional[int] = None,
     delay: float = 2.0,
@@ -91,19 +132,41 @@ def run_evaluation(
     if limit:
         test_samples = test_samples[:limit]
 
-    print(f"Evaluator Provider: {provider.upper()}")
-    print(f"Loaded {len(test_samples)} golden test samples.")
-    print(f"Configuration: Mode={retrieval_mode.upper()}, Top-K={top_k}, Delay={delay}s\n")
+    print(f"Generator Strategy: {provider.upper()}")
+    print(f"Judge Strategy:     {judge_provider.upper()}")
+    print(f"Evaluation Samples: {len(test_samples)} golden questions")
+    print(f"Configuration:      Mode={retrieval_mode.upper()}, Top-K={top_k}, Delay={delay}s\n")
 
     vsm = VectorStoreManager()
     memory = ChatHistoryManager()
+    parser = JsonOutputParser()
 
-    # Instantiate LLMs with capped tokens to prevent rate limits
-    llm = get_chat_llm(provider=provider, temperature=0.1)
-    judge_llm = get_chat_llm(provider=provider, temperature=0.0)
+    # Setup generator and judge pools
+    if provider == "round_robin":
+        gen_pool = ResilientProviderPool(temperature=0.1)
+    else:
+        single_llm = get_chat_llm(provider=provider, temperature=0.1)
+        # Fallback to Ollama if single provider errors
+        try:
+            ollama_fb = get_chat_llm("ollama", temperature=0.1)
+            single_llm = single_llm.with_fallbacks([ollama_fb])
+        except Exception:
+            pass
 
+    if judge_provider == "round_robin":
+        judge_pool = ResilientProviderPool(temperature=0.0)
+    else:
+        single_judge = get_chat_llm(provider=judge_provider, temperature=0.0)
+        try:
+            ollama_fb = get_chat_llm("ollama", temperature=0.0)
+            single_judge = single_judge.with_fallbacks([ollama_fb])
+        except Exception:
+            pass
+
+    # Dummy initial chain, will be updated per turn
+    initial_llm = gen_pool.instances[gen_pool.healthy_providers[0]] if provider == "round_robin" else single_llm
     rag_chain = ConversationalRAGChain(
-        llm=llm,
+        llm=initial_llm,
         vectorstore_manager=vsm,
         memory_manager=memory,
         k=top_k,
@@ -111,9 +174,6 @@ def run_evaluation(
     )
 
     eval_results = []
-    parser = JsonOutputParser()
-    judge_chain = EVAL_PROMPT | judge_llm | parser
-
     start_total_time = time.time()
 
     for idx, sample in enumerate(test_samples):
@@ -122,7 +182,25 @@ def run_evaluation(
         ground_truth = sample.get("ground_truth")
         ref_ctx = sample.get("reference_context", "")
 
-        print(f"[{idx+1}/{len(test_samples)}] Testing: \"{question[:60]}...\"")
+        # Select provider for this turn
+        if provider == "round_robin":
+            turn_gen_llm, active_gen_name = gen_pool.get_resilient_llm(idx)
+        else:
+            turn_gen_llm = single_llm
+            active_gen_name = provider
+
+        if judge_provider == "round_robin":
+            turn_judge_llm, active_judge_name = judge_pool.get_resilient_llm(idx)
+        else:
+            turn_judge_llm = single_judge
+            active_judge_name = judge_provider
+
+        # Update chain LLM for current turn
+        rag_chain.llm = turn_gen_llm
+        judge_runner = EVAL_PROMPT | turn_judge_llm
+
+        print(f"[{idx+1}/{len(test_samples)}] Testing: \"{question[:55]}...\"")
+        print(f"   Providers: Gen={active_gen_name.upper()} | Judge={active_judge_name.upper()}")
 
         # 1. Execute RAG Chain with isolated session to prevent cross-question history contamination
         eval_session = f"eval_{q_id}"
@@ -148,23 +226,33 @@ def run_evaluation(
             retrieved_formatted.append(f"[Chunk {c_idx+1}] (Score: {score_val}):\n{s['content'][:300]}")
         retrieved_str = "\n\n".join(retrieved_formatted)
 
-        # 3. LLM-as-a-Judge Evaluation with retry
+        # 3. LLM-as-a-Judge Evaluation with retry and robust JSON extraction
         eval_scores = None
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                eval_scores = judge_chain.invoke({
+                raw_judge = judge_runner.invoke({
                     "question": question,
                     "ground_truth": ground_truth,
                     "reference_context": ref_ctx,
                     "retrieved_context": retrieved_str,
                     "generated_answer": generated_answer
                 })
+                judge_text = raw_judge.content if hasattr(raw_judge, "content") else str(raw_judge)
+                try:
+                    eval_scores = parser.parse(judge_text)
+                except Exception:
+                    import re
+                    match = re.search(r"\{[\s\S]*\}", judge_text)
+                    if match:
+                        eval_scores = json.loads(match.group(0))
+                    else:
+                        raise ValueError(f"Could not parse JSON from judge: {judge_text[:100]}")
                 break
             except Exception as e:
                 err_msg = str(e)
                 if "429" in err_msg or "rate" in err_msg.lower():
-                    wait_time = 5 * (attempt + 1)
+                    wait_time = 4 * (attempt + 1)
                     print(f"   Rate limit encountered, backing off for {wait_time}s...")
                     time.sleep(wait_time)
                 else:
@@ -186,13 +274,15 @@ def run_evaluation(
         rel = float(eval_scores.get("answer_relevance", 0.0))
         reasoning = eval_scores.get("reasoning", "")
 
-        print(f"   Recall: {rec:.2f} | Precision: {prec:.2f} | Faithfulness: {faith:.2f} | Relevancy: {rel:.2f} | ({latency}s)")
+        print(f"   Scores: Recall={rec:.2f} | Precision={prec:.2f} | Faithfulness={faith:.2f} | Relevancy={rel:.2f} | ({latency}s)")
         print(f"   Reasoning: {reasoning[:90]}...\n")
 
         eval_results.append({
             "id": q_id,
             "question": question,
-            "question_type": sample.get("question_type", "factual"),
+            "question_type": sample.get("question_type", "multi_context_reasoning"),
+            "generator_provider": active_gen_name,
+            "judge_provider": active_judge_name,
             "ground_truth": ground_truth,
             "generated_answer": generated_answer,
             "context_recall": rec,
@@ -205,9 +295,6 @@ def run_evaluation(
 
         if delay > 0 and idx < len(test_samples) - 1:
             time.sleep(delay)
-
-    # Clear eval session history
-    memory.clear_session("eval_run")
 
     # 4. Aggregate & Output Scorecard
     df = pd.DataFrame(eval_results)
@@ -230,20 +317,20 @@ def run_evaluation(
     avg_latency = df["latency_seconds"].mean()
     total_elapsed = round(time.time() - start_total_time, 2)
 
-    title = "PHASE 2: HYBRID SEARCH (BM25 + DENSE RRF) SCORECARD" if retrieval_mode == "hybrid" else "BASELINE RAG BENCHMARK SCORECARD"
+    title = "PHASE 2: HYBRID SEARCH (BM25 + DENSE RRF) BENCHMARK" if retrieval_mode == "hybrid" else "BASELINE RAG BENCHMARK"
 
     print("\n" + "=" * 70)
     print(title)
     print("=" * 70)
-    print(f"Retrieval Strategy        : {retrieval_mode.upper()} (k={top_k})")
-    print(f"Pipeline Configuration    : ChromaDB + MiniLM + BM25 + {provider.upper()}")
+    print(f"Strategy                  : {retrieval_mode.upper()} (k={top_k})")
+    print(f"Provider Pool Mode        : Gen={provider.upper()}, Judge={judge_provider.upper()}")
     print(f"Total Evaluated Questions : {len(df)}")
     print(f"Context Recall            : {avg_recall * 100:.2f}%")
     print(f"Context Precision         : {avg_precision * 100:.2f}%")
     print(f"Faithfulness (Grounding)  : {avg_faithfulness * 100:.2f}%")
     print(f"Answer Relevance          : {avg_relevance * 100:.2f}%")
     print(f"Average Latency           : {avg_latency:.2f}s")
-    print(f"Total Evaluation Time     : {total_elapsed:.2f}s")
+    print(f"Total Benchmark Runtime   : {total_elapsed:.2f}s")
     print(f"Detailed CSV Report saved : {csv_path}")
     print("=" * 70)
 
@@ -266,15 +353,15 @@ def run_evaluation(
             comp_md = f"""# Ablation Benchmark: Phase 1 (Baseline) vs Phase 2 (Hybrid Search)
 
 **Dataset**: `{dataset_slug}` ($N={len(df)}$)  
-**Evaluator**: LLM-as-a-Judge (`{provider.upper()}`)
+**Provider Strategy**: Round-Robin Pool (`GROQ`, `NVIDIA`, `OPENROUTER`, `OLLAMA`) with Failover
 
-| Metric | Phase 1 (Dense Baseline) | Phase 2 (Hybrid BM25 + Dense RRF) | Delta | Assessment |
+| Metric | Phase 1 (Dense Baseline) | Phase 2 (Hybrid BM25 + Dense RRF) | Delta | Technical Assessment |
 | :--- | :---: | :---: | :---: | :--- |
 | **Context Recall** | **{b_recall*100:.2f}%** | **{avg_recall*100:.2f}%** | **{'+' if diff_recall >= 0 else ''}{diff_recall:.2f}%** | {'Substantial improvement on exact keywords and sparse passages' if diff_recall > 0 else 'Maintained'} |
 | **Context Precision** | **{b_precision*100:.2f}%** | **{avg_precision*100:.2f}%** | **{'+' if diff_precision >= 0 else ''}{diff_precision:.2f}%** | {'Improved signal-to-noise through lexical cross-validation' if diff_precision > 0 else 'Comparable'} |
 | **Faithfulness** | **{b_faith*100:.2f}%** | **{avg_faithfulness*100:.2f}%** | **{'+' if diff_faith >= 0 else ''}{diff_faith:.2f}%** | Preserves 100% adherence to retrieved evidence |
 | **Answer Relevance** | **{b_rel*100:.2f}%** | **{avg_relevance*100:.2f}%** | **{'+' if diff_rel >= 0 else ''}{diff_rel:.2f}%** | Higher recall directly enables more complete answers |
-| **Average Latency** | **{b_lat:.2f}s** | **{avg_latency:.2f}s** | **{avg_latency - b_lat:+.2f}s** | Negligible overhead for in-memory BM25 index |
+| **Average Latency** | **{b_lat:.2f}s** | **{avg_latency:.2f}s** | **{avg_latency - b_lat:+.2f}s** | Balanced load across cloud & local providers |
 """
             comp_path = results_dir / "phase2_hybrid_vs_baseline.md"
             with open(comp_path, "w", encoding="utf-8") as f:
@@ -285,12 +372,13 @@ def run_evaluation(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run RAG evaluation benchmark")
-    parser.add_argument("--provider", type=str, default="groq", choices=["groq", "openrouter", "nvidia", "ollama"], help="LLM provider")
+    parser = argparse.ArgumentParser(description="Run RAG evaluation benchmark with multi-provider failover")
+    parser.add_argument("--provider", type=str, default="round_robin", choices=["round_robin", "groq", "openrouter", "nvidia", "ollama"], help="LLM generator provider")
+    parser.add_argument("--judge-provider", type=str, default="round_robin", choices=["round_robin", "groq", "openrouter", "nvidia", "ollama"], help="LLM judge provider")
     parser.add_argument("--dataset", type=str, default="amnesty_qa", choices=["amnesty_qa", "siddhesh_forecast"], help="Benchmark dataset")
     parser.add_argument("--mode", "--retrieval-mode", dest="retrieval_mode", type=str, default="hybrid", choices=["hybrid", "dense"], help="Retrieval mode (hybrid with BM25+RRF, or dense Chroma)")
-    parser.add_argument("--limit", type=int, default=5, help="Number of questions to evaluate")
-    parser.add_argument("--delay", type=float, default=2.5, help="Delay in seconds between calls")
+    parser.add_argument("--limit", type=int, default=10, help="Number of questions to evaluate (default: 10, max: 20)")
+    parser.add_argument("--delay", type=float, default=2.0, help="Delay in seconds between calls")
     args = parser.parse_args()
 
     if args.dataset == "amnesty_qa":
@@ -300,6 +388,7 @@ if __name__ == "__main__":
 
     run_evaluation(
         provider=args.provider,
+        judge_provider=args.judge_provider,
         testset_path=testset_file,
         limit=args.limit,
         delay=args.delay,

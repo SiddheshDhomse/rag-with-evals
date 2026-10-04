@@ -3,220 +3,226 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RAG Evaluation Suite | Continuous Benchmarking & Phase Diagnostics</title>
+  <title>RAG Evaluation Suite | Minimalist Diagnostics & Ablation Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --card-border: #e2e8f0;
-      --text-main: #0f172a;
+      --surface: #ffffff;
+      --surface-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      --border-subtle: #edf2f7;
+      
+      --text-main: #090d16;
       --text-muted: #64748b;
-      --text-light: #94a3b8;
+      --text-dim: #94a3b8;
+
       --primary: #4f46e5;
+      --primary-hover: #4338ca;
       --primary-light: #eef2ff;
-      --green: #10b981;
-      --green-light: #ecfdf5;
+      --primary-glow: rgba(79, 70, 229, 0.15);
+
+      --emerald: #059669;
+      --emerald-light: #ecfdf5;
+      --emerald-border: #a7f3d0;
+
       --blue: #2563eb;
       --blue-light: #eff6ff;
-      --purple: #8b5cf6;
+
+      --purple: #7c3aed;
       --purple-light: #f5f3ff;
-      --amber: #f59e0b;
+
+      --amber: #d97706;
       --amber-light: #fffbeb;
-      --dark-card: #1e1b4b;
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+
+      --slate-dark: #0f172a;
+      
       --radius-sm: 8px;
       --radius-md: 12px;
       --radius-lg: 16px;
+      --radius-xl: 20px;
+
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+      --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.02);
+      --shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 10px 24px -3px rgba(0, 0, 0, 0.05);
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
 
     body {
       background-color: var(--bg);
       color: var(--text-main);
-      padding: 24px;
+      padding: 32px 24px;
       min-height: 100vh;
     }
 
     .container {
-      max-width: 1400px;
+      max-width: 1440px;
       margin: 0 auto;
     }
 
-    /* Header */
-    .header {
+    /* Top Navigation Bar */
+    .topbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
-      background: var(--card-bg);
-      padding: 18px 24px;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--card-border);
+      margin-bottom: 28px;
+      background: var(--surface);
+      padding: 16px 24px;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
     }
 
-    .brand {
+    .brand-section {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
     }
 
-    .brand-icon {
-      width: 44px;
-      height: 44px;
-      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
-      box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.28);
     }
 
     .brand-title-wrap {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 4px;
     }
 
     .brand-title {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
       color: var(--text-main);
     }
 
-    .badge-query-count {
-      background: #ede9fe;
-      color: #6d28d9;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 20px;
-    }
-
-    .brand-subtitle {
-      font-size: 13px;
+    .brand-meta {
+      font-size: 12.5px;
       color: var(--text-muted);
+      margin-top: 1px;
     }
 
-    .header-nav {
+    .pill-badge {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      letter-spacing: -0.01em;
+    }
+
+    .pill-badge.active-phase {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+
+    .nav-actions {
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
-    .nav-pill {
+    .segmented-control {
+      background: var(--surface-subtle);
+      padding: 4px;
+      border-radius: 12px;
+      display: flex;
+      gap: 4px;
+    }
+
+    .segment-btn {
       background: transparent;
-      border: 1px solid var(--card-border);
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s ease;
-    }
-
-    .nav-pill:hover, .nav-pill.active {
-      background: var(--primary-light);
-      color: var(--primary);
-      border-color: #c7d2fe;
-    }
-
-    .btn-add {
-      background: var(--primary);
-      color: white;
       border: none;
-      padding: 9px 18px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
-      transition: background 0.2s;
-    }
-
-    .btn-add:hover {
-      background: #4338ca;
-    }
-
-    /* Phase Selector Toolbar */
-    .phase-toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      padding: 12px 18px;
-      background: #ffffff;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--card-border);
-      box-shadow: var(--shadow-sm);
-    }
-
-    .phase-toggle-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .phase-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-right: 6px;
-    }
-
-    .phase-btn {
       padding: 7px 14px;
+      border-radius: 8px;
       font-size: 12.5px;
       font-weight: 600;
-      border-radius: 8px;
-      border: 1px solid var(--card-border);
-      background: white;
       color: var(--text-muted);
       cursor: pointer;
       transition: all 0.15s ease;
     }
 
-    .phase-btn:hover {
-      border-color: #cbd5e1;
+    .segment-btn:hover {
       color: var(--text-main);
     }
 
-    .phase-btn.active {
+    .segment-btn.active {
+      background: var(--surface);
+      color: var(--text-main);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .btn-run {
       background: var(--text-main);
       color: white;
-      border-color: var(--text-main);
+      border: none;
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
     }
 
-    .phase-btn.highlight {
-      background: #ecfdf5;
-      color: #065f46;
-      border-color: #a7f3d0;
+    .btn-run:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
     }
 
-    .phase-btn.highlight.active {
-      background: #059669;
-      color: white;
-      border-color: #059669;
+    /* Sub-header / System Status Strip */
+    .system-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      margin-bottom: 24px;
+      background: #ffffff;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      font-size: 12.5px;
+      color: var(--text-muted);
     }
 
-    /* Metric Cards Grid */
+    .strip-items {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .strip-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .strip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--emerald);
+    }
+
+    /* 6 Metric Cards Row */
     .metric-grid {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
@@ -225,413 +231,421 @@
     }
 
     .metric-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: var(--radius-md);
-      padding: 18px 20px;
-      box-shadow: var(--shadow-sm);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-card);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      transition: all 0.2s ease;
       position: relative;
-      transition: transform 0.15s, box-shadow 0.15s;
     }
 
     .metric-card:hover {
-      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
     }
 
-    .metric-header {
+    .metric-card-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
+      align-items: flex-start;
+      margin-bottom: 14px;
     }
 
-    .metric-title {
+    .metric-label {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       color: var(--text-muted);
     }
 
-    .metric-icon-wrap {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
+    .metric-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
     }
 
-    .metric-value-row {
+    .metric-val-wrap {
       display: flex;
       align-items: baseline;
       gap: 8px;
       margin-bottom: 10px;
     }
 
-    .metric-value {
-      font-size: 28px;
-      font-weight: 700;
+    .metric-number {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
       color: var(--text-main);
       line-height: 1;
     }
 
-    .metric-delta {
-      font-size: 12px;
+    .metric-trend {
+      font-size: 11.5px;
       font-weight: 700;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 6px;
     }
 
-    .delta-pos {
+    .trend-pos {
       background: #ecfdf5;
-      color: #059669;
+      color: #047857;
     }
 
-    .delta-neutral {
+    .trend-neutral {
       background: #f1f5f9;
       color: #64748b;
     }
 
-    .progress-bar-bg {
-      height: 6px;
-      background: #e2e8f0;
-      border-radius: 4px;
+    .metric-bar-bg {
+      height: 5px;
+      background: #f1f5f9;
+      border-radius: 3px;
       overflow: hidden;
       margin-bottom: 8px;
     }
 
-    .progress-bar-fill {
+    .metric-bar-fill {
       height: 100%;
-      border-radius: 4px;
-      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 3px;
+      transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .metric-caption {
-      font-size: 12px;
+    .metric-desc {
+      font-size: 11.5px;
       color: var(--text-muted);
+      line-height: 1.35;
     }
 
-    /* Triad Card (Special Dark Card) */
-    .metric-card.dark {
-      background: var(--dark-card);
+    /* Dark Triad Card */
+    .metric-card.hero {
+      background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 100%);
       border-color: #312e81;
       color: white;
     }
 
-    .metric-card.dark .metric-title {
+    .metric-card.hero .metric-label {
       color: #a5b4fc;
     }
 
-    .metric-card.dark .metric-value {
-      color: white;
+    .metric-card.hero .metric-number {
+      color: #ffffff;
     }
 
-    .metric-card.dark .metric-caption {
-      color: #c7d2fe;
+    .metric-card.hero .metric-desc {
+      color: #cbd5e1;
     }
 
-    .metric-card.dark .progress-bar-bg {
-      background: #312e81;
+    .metric-card.hero .metric-bar-bg {
+      background: rgba(255, 255, 255, 0.12);
     }
 
-    .metric-card.dark .progress-bar-fill {
+    .metric-card.hero .metric-bar-fill {
       background: #818cf8;
     }
 
-    /* Middle Section: Radar & Snapshot */
-    .middle-grid {
+    /* Analytics Section: Radar + Bar Comparison */
+    .analytics-grid {
       display: grid;
-      grid-template-columns: 420px 1fr;
+      grid-template-columns: 460px 1fr;
       gap: 20px;
       margin-bottom: 24px;
     }
 
-    .panel-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
+    .chart-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 22px 24px;
-      box-shadow: var(--shadow-sm);
+      padding: 24px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
     }
 
-    .panel-header {
+    .panel-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 18px;
+      align-items: flex-start;
+      margin-bottom: 20px;
     }
 
-    .panel-title {
+    .panel-heading {
       font-size: 16px;
-      font-weight: 700;
+      font-weight: 800;
+      letter-spacing: -0.015em;
       color: var(--text-main);
     }
 
-    .panel-subtitle {
+    .panel-sub {
       font-size: 12.5px;
       color: var(--text-muted);
       margin-top: 2px;
     }
 
-    .legend-group {
+    .legend-row {
       display: flex;
-      gap: 14px;
+      gap: 16px;
       font-size: 12px;
       font-weight: 600;
+      color: var(--text-muted);
     }
 
-    .legend-item {
+    .legend-chip {
       display: flex;
       align-items: center;
       gap: 6px;
     }
 
-    .legend-dot {
+    .legend-marker {
       width: 10px;
       height: 10px;
-      border-radius: 50%;
+      border-radius: 3px;
     }
 
-    /* Canvas styling */
-    .canvas-container {
+    /* Radar Canvas Container with Modern Glow Backdrop */
+    .radar-wrapper {
+      position: relative;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 310px;
-      position: relative;
+      height: 350px;
+      background: radial-gradient(circle at center, rgba(79, 70, 229, 0.04) 0%, transparent 70%);
+      border-radius: var(--radius-md);
     }
 
     #radarCanvas {
-      width: 380px;
-      height: 300px;
+      width: 440px;
+      height: 340px;
     }
 
-    /* Snapshot Panel */
-    .snapshot-row {
-      background: #f8fafc;
-      border: 1px solid var(--card-border);
-      border-radius: var(--radius-md);
-      padding: 16px 20px;
-      margin-bottom: 16px;
-    }
-
-    .snapshot-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-    }
-
-    .snapshot-tag-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .tag-name {
-      font-weight: 700;
-      font-size: 14px;
-      color: var(--text-main);
-    }
-
-    .tag-count {
-      background: #e2e8f0;
-      color: var(--text-muted);
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 12px;
-    }
-
-    .snapshot-stat-wrap {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .snapshot-stat {
-      font-size: 12.5px;
-      color: var(--text-muted);
-    }
-
-    .snapshot-stat b {
-      color: var(--text-main);
-    }
-
-    .score-badge {
-      background: #ede9fe;
-      color: #6d28d9;
-      font-size: 12.5px;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-radius: 8px;
-    }
-
-    .mini-bars-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-    }
-
-    .mini-bar-item {
+    /* Bar Graph Container */
+    .bar-chart-wrapper {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-    }
-
-    .mini-bar-label {
-      display: flex;
       justify-content: space-between;
-      font-size: 11.5px;
-      font-weight: 600;
-      color: var(--text-muted);
+      height: 350px;
+      padding-top: 10px;
     }
 
-    /* Ablation Progress Card */
-    .progression-card {
-      margin-top: 14px;
-      background: #ffffff;
-      border: 1px solid var(--card-border);
-      border-radius: var(--radius-md);
-      padding: 16px;
-    }
-
-    .phase-timeline {
+    .bar-columns {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-top: 10px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+      height: 280px;
+      align-items: flex-end;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
     }
 
-    .timeline-step {
-      border: 1px solid var(--card-border);
-      border-radius: var(--radius-sm);
-      padding: 12px;
-      background: #f8fafc;
+    .bar-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
       position: relative;
     }
 
-    .timeline-step.completed {
-      border-color: #86efac;
+    .bar-delta-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      background: #ecfdf5;
+      color: #047857;
+    }
+
+    .bar-pair {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 200px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .bar-stem {
+      width: 28px;
+      border-radius: 6px 6px 0 0;
+      transition: height 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      display: flex;
+      justify-content: center;
+    }
+
+    .bar-stem.baseline {
+      background: #cbd5e1;
+    }
+
+    .bar-stem.hybrid {
+      background: linear-gradient(180deg, #4f46e5 0%, #6366f1 100%);
+      box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+    }
+
+    .bar-val-text {
+      position: absolute;
+      top: -20px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-main);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .bar-label-caption {
+      margin-top: 10px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* Roadmap Timeline */
+    .roadmap-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 24px;
+    }
+
+    .roadmap-timeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .roadmap-node {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      background: #f8fafc;
+      transition: all 0.2s;
+    }
+
+    .roadmap-node.done {
+      border-color: #a7f3d0;
       background: #f0fdf4;
     }
 
-    .timeline-step.current {
-      border-color: #93c5fd;
-      background: #eff6ff;
+    .roadmap-node.active {
+      border-color: #818cf8;
+      background: #f5f3ff;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
 
-    .timeline-step.planned {
+    .roadmap-node.upcoming {
       border-style: dashed;
       background: #ffffff;
-      opacity: 0.75;
+      opacity: 0.7;
     }
 
-    .step-badge {
+    .rn-tag {
+      display: inline-block;
       font-size: 10.5px;
       font-weight: 700;
       text-transform: uppercase;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 4px;
-      display: inline-block;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
-    .badge-done { background: #dcfce7; color: #15803d; }
-    .badge-active { background: #dbeafe; color: #1e40af; }
-    .badge-next { background: #f1f5f9; color: #475569; }
-
-    .step-title {
-      font-size: 13px;
+    .rn-title {
+      font-size: 13.5px;
       font-weight: 700;
       color: var(--text-main);
       margin-bottom: 4px;
     }
 
-    .step-desc {
+    .rn-desc {
       font-size: 11.5px;
       color: var(--text-muted);
       line-height: 1.4;
     }
 
-    /* Query Table Section */
-    .table-section {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
+    /* Diagnostics Table Section */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 22px 24px;
-      box-shadow: var(--shadow-sm);
+      padding: 24px;
+      box-shadow: var(--shadow-card);
     }
 
-    .table-header-wrap {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .query-table {
+    .diagnostic-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      margin-top: 14px;
     }
 
-    .query-table th {
+    .diagnostic-table th {
       text-align: left;
-      padding: 10px 14px;
+      padding: 12px 16px;
       background: #f8fafc;
       color: var(--text-muted);
-      font-weight: 600;
-      font-size: 11.5px;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      border-bottom: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--border);
     }
 
-    .query-table td {
-      padding: 14px;
-      border-bottom: 1px solid #f1f5f9;
+    .diagnostic-table td {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
       vertical-align: middle;
     }
 
-    .query-table tr:hover td {
-      background: #f8fafc;
+    .diagnostic-table tr:hover td {
+      background: #fbfcfe;
     }
 
-    .query-id {
+    .qid-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
       font-weight: 700;
       color: var(--primary);
+      background: var(--primary-light);
+      padding: 3px 8px;
+      border-radius: 6px;
     }
 
-    .query-text {
-      font-weight: 500;
+    .q-title {
+      font-weight: 600;
       color: var(--text-main);
-      max-width: 440px;
+      max-width: 480px;
+      line-height: 1.4;
     }
 
-    .score-pill {
+    .chip {
+      font-family: 'JetBrains Mono', monospace;
       font-weight: 700;
+      font-size: 11.5px;
       padding: 4px 8px;
       border-radius: 6px;
       display: inline-block;
-      font-size: 12px;
     }
 
-    .score-green { background: #ecfdf5; color: #059669; }
-    .score-amber { background: #fffbeb; color: #d97706; }
-    .score-red { background: #fef2f2; color: #dc2626; }
-    .score-blue { background: #eff6ff; color: #2563eb; }
+    .chip-green { background: #ecfdf5; color: #047857; }
+    .chip-amber { background: #fffbeb; color: #b45309; }
+    .chip-blue { background: #eff6ff; color: #1d4ed8; }
+    .chip-slate { background: #f1f5f9; color: #475569; }
 
     .btn-inspect {
-      background: white;
-      border: 1px solid var(--card-border);
-      padding: 6px 12px;
-      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 8px;
       font-size: 12px;
       font-weight: 600;
       color: var(--text-main);
@@ -640,33 +654,30 @@
     }
 
     .btn-inspect:hover {
-      background: var(--primary-light);
-      color: var(--primary);
-      border-color: #c7d2fe;
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
     }
 
-    /* Modal / Inspector Drawer */
-    .drawer-overlay {
+    /* Modern Slide-over Drawer */
+    .drawer-scrim {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(15, 23, 42, 0.4);
-      backdrop-filter: blur(2px);
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
       display: none;
       justify-content: flex-end;
-      z-index: 1000;
+      z-index: 999;
     }
 
-    .drawer {
-      width: 600px;
+    .drawer-body {
+      width: 620px;
       height: 100vh;
       background: white;
-      padding: 28px;
+      padding: 32px;
       overflow-y: auto;
-      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
-      animation: slideIn 0.25s ease-out;
+      box-shadow: -8px 0 32px rgba(15, 23, 42, 0.15);
+      animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     @keyframes slideIn {
@@ -674,78 +685,47 @@
       to { transform: translateX(0); }
     }
 
-    .drawer-header {
+    .drawer-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid var(--card-border);
+      align-items: flex-start;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .drawer-title {
-      font-size: 17px;
-      font-weight: 700;
-    }
-
-    .btn-close {
-      background: #f1f5f9;
-      border: none;
+    .drawer-close {
       width: 32px;
       height: 32px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
       color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
     }
 
-    .drawer-section {
-      margin-bottom: 20px;
-    }
-
-    .drawer-label {
-      font-size: 11.5px;
+    .block-label {
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       color: var(--text-muted);
       margin-bottom: 6px;
     }
 
-    .drawer-box {
+    .block-content {
       background: #f8fafc;
-      border: 1px solid var(--card-border);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 12px 14px;
+      padding: 14px 16px;
       font-size: 13px;
-      line-height: 1.5;
+      line-height: 1.55;
       color: var(--text-main);
-    }
-
-    .drawer-box.highlight {
-      background: #eff6ff;
-      border-color: #bfdbfe;
-    }
-
-    .drawer-metrics {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .dm-card {
-      background: #f8fafc;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 10px;
-      text-align: center;
-    }
-
-    .dm-val {
-      font-size: 18px;
-      font-weight: 700;
-      margin-top: 2px;
+      margin-bottom: 20px;
     }
   </style>
 </head>
@@ -753,55 +733,58 @@
 
 <div class="container">
 
-  <!-- Header -->
-  <header class="header">
-    <div class="brand">
-      <div class="brand-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
-          <path d="M12 2a10 10 0 0 1 10 10"></path>
-          <circle cx="12" cy="12" r="3"></circle>
+  <!-- Top Navigation Bar -->
+  <header class="topbar">
+    <div class="brand-section">
+      <div class="brand-logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="m4.93 4.93 4.24 4.24"></path>
+          <path d="m14.83 9.17 4.24-4.24"></path>
+          <path d="m14.83 14.83 4.24 4.24"></path>
+          <path d="m9.17 14.83-4.24 4.24"></path>
+          <circle cx="12" cy="12" r="4"></circle>
         </svg>
       </div>
       <div>
         <div class="brand-title-wrap">
           <h1 class="brand-title">RAG Evaluation Suite</h1>
-          <span class="badge-query-count" id="headerQueryCount">4 Evaluated Queries</span>
+          <span class="pill-badge active-phase" id="topActiveBadge">Phase 2: Hybrid Search Active</span>
         </div>
-        <p class="brand-subtitle">Continuous Retrieval-Augmented Generation Benchmarking & Phase Diagnostics</p>
+        <p class="brand-meta">Continuous Retrieval-Augmented Generation Benchmarking & Empirical Ablation</p>
       </div>
     </div>
 
-    <div class="header-nav">
-      <button class="nav-pill active" onclick="switchNav('dashboard')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-        Dashboard & Runs
-      </button>
-      <button class="nav-pill" onclick="switchNav('benchmark')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-        Phase Benchmark
-      </button>
-      <button class="nav-pill" onclick="switchNav('diff')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
-        Side-by-Side Diff
-      </button>
-      <button class="btn-add" onclick="triggerRunInfo()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        Add Evaluation Run
+    <div class="nav-actions">
+      <div class="segmented-control">
+        <button class="segment-btn" id="segPhase1" onclick="setDashboardView('phase1')">Baseline (Dense)</button>
+        <button class="segment-btn active" id="segPhase2" onclick="setDashboardView('phase2')">Phase 2 (Hybrid)</button>
+        <button class="segment-btn" id="segDiff" onclick="setDashboardView('compare')">Side-by-Side Overlay</button>
+      </div>
+
+      <button class="btn-run" onclick="copyCliCommand()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Copy CLI Eval Command
       </button>
     </div>
   </header>
 
-  <!-- Phase Switcher Toolbar -->
-  <div class="phase-toolbar">
-    <div class="phase-toggle-group">
-      <span class="phase-label">Active View:</span>
-      <button class="phase-btn" id="btnPhase1" onclick="setPhase('phase1')">Phase 1: Dense Baseline</button>
-      <button class="phase-btn highlight active" id="btnPhase2" onclick="setPhase('phase2')">Phase 2: Hybrid Search (BM25 + RRF)</button>
-      <button class="phase-btn" id="btnCompare" onclick="setPhase('compare')">Side-by-Side Overlay</button>
+  <!-- System Status Strip -->
+  <div class="system-strip">
+    <div class="strip-items">
+      <div class="strip-item">
+        <div class="strip-dot"></div>
+        <span>Corpus Chunks: <b>168 Docs</b></span>
+      </div>
+      <div class="strip-item">
+        <span>Benchmark: <b>explodinggradients/amnesty_qa (v2)</b></span>
+      </div>
+      <div class="strip-item">
+        <span>Embedding: <b>sentence-transformers/all-MiniLM-L6-v2 (384d)</b></span>
+      </div>
     </div>
-    <div style="font-size: 12.5px; color: var(--text-muted);">
-      Dataset: <b>explodinggradients/amnesty_qa (english_v2)</b> &bull; LLM Judge: <b>Groq (Qwen 2.5)</b>
+    <div>
+      Judge Engine: <b>Groq Cloud (Qwen 2.5)</b> &bull; Evaluation Temperature: <b>T = 0.0</b>
     </div>
   </div>
 
@@ -809,512 +792,742 @@
   <section class="metric-grid">
     <!-- Context Recall -->
     <div class="metric-card">
-      <div class="metric-header">
-        <span class="metric-title">Context Recall</span>
-        <div class="metric-icon-wrap" style="background: var(--green-light); color: var(--green);">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+      <div class="metric-card-top">
+        <span class="metric-label">Context Recall</span>
+        <div class="metric-icon" style="background:#ecfdf5; color:#059669;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
         </div>
       </div>
-      <div class="metric-value-row">
-        <span class="metric-value" id="cardRecallVal">83.8%</span>
-        <span class="metric-delta delta-pos" id="cardRecallDelta">+37.5%</span>
+      <div class="metric-val-wrap">
+        <span class="metric-number" id="valRecall">86.2%</span>
+        <span class="metric-trend trend-pos" id="trendRecall">+9.7%</span>
       </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="cardRecallBar" style="width: 83.8%; background: var(--green);"></div>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" id="barRecall" style="width: 86.2%; background: #059669;"></div>
       </div>
-      <p class="metric-caption">Retrieved relevant ground truth facts</p>
+      <p class="metric-desc">Ground-truth facts successfully captured</p>
     </div>
 
-    <!-- Context Precision -->
+    <!-- Precision -->
     <div class="metric-card">
-      <div class="metric-header">
-        <span class="metric-title">Precision</span>
-        <div class="metric-icon-wrap" style="background: var(--blue-light); color: var(--blue);">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+      <div class="metric-card-top">
+        <span class="metric-label">Context Precision</span>
+        <div class="metric-icon" style="background:#eff6ff; color:#2563eb;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
         </div>
       </div>
-      <div class="metric-value-row">
-        <span class="metric-value" id="cardPrecisionVal">85.0%</span>
-        <span class="metric-delta delta-pos" id="cardPrecisionDelta">+27.5%</span>
+      <div class="metric-val-wrap">
+        <span class="metric-number" id="valPrecision">71.0%</span>
+        <span class="metric-trend trend-pos" id="trendPrecision">+11.5%</span>
       </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="cardPrecisionBar" style="width: 85.0%; background: var(--blue);"></div>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" id="barPrecision" style="width: 71.0%; background: #2563eb;"></div>
       </div>
-      <p class="metric-caption">Top-ranked chunk signal quality</p>
+      <p class="metric-desc">Signal quality of top-ranked chunks</p>
     </div>
 
     <!-- Faithfulness -->
     <div class="metric-card">
-      <div class="metric-header">
-        <span class="metric-title">Faithfulness</span>
-        <div class="metric-icon-wrap" style="background: var(--purple-light); color: var(--purple);">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+      <div class="metric-card-top">
+        <span class="metric-label">Faithfulness</span>
+        <div class="metric-icon" style="background:#f5f3ff; color:#7c3aed;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
         </div>
       </div>
-      <div class="metric-value-row">
-        <span class="metric-value" id="cardFaithVal">100.0%</span>
-        <span class="metric-delta delta-neutral" id="cardFaithDelta">0.0%</span>
+      <div class="metric-val-wrap">
+        <span class="metric-number" id="valFaith">93.7%</span>
+        <span class="metric-trend trend-neutral" id="trendFaith">-0.3%</span>
       </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="cardFaithBar" style="width: 100%; background: var(--purple);"></div>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" id="barFaith" style="width: 93.7%; background: #7c3aed;"></div>
       </div>
-      <p class="metric-caption">Zero hallucination groundedness</p>
+      <p class="metric-desc">Zero-hallucination factual grounding</p>
     </div>
 
-    <!-- Relevance -->
+    <!-- Answer Relevance -->
     <div class="metric-card">
-      <div class="metric-header">
-        <span class="metric-title">Relevance</span>
-        <div class="metric-icon-wrap" style="background: var(--amber-light); color: var(--amber);">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+      <div class="metric-card-top">
+        <span class="metric-label">Answer Relevance</span>
+        <div class="metric-icon" style="background:#fffbeb; color:#d97706;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
         </div>
       </div>
-      <div class="metric-value-row">
-        <span class="metric-value" id="cardRelevanceVal">93.8%</span>
-        <span class="metric-delta delta-pos" id="cardRelevanceDelta">+13.8%</span>
+      <div class="metric-val-wrap">
+        <span class="metric-number" id="valRelevance">88.2%</span>
+        <span class="metric-trend trend-pos" id="trendRelevance">+14.5%</span>
       </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="cardRelevanceBar" style="width: 93.8%; background: var(--amber);"></div>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" id="barRelevance" style="width: 88.2%; background: #d97706;"></div>
       </div>
-      <p class="metric-caption">Completeness to user query</p>
+      <p class="metric-desc">Direct semantic alignment to prompt</p>
     </div>
 
     <!-- Avg Latency -->
     <div class="metric-card">
-      <div class="metric-header">
-        <span class="metric-title">Avg Latency</span>
-        <div class="metric-icon-wrap" style="background: #f1f5f9; color: var(--text-muted);">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <div class="metric-card-top">
+        <span class="metric-label">Average Latency</span>
+        <div class="metric-icon" style="background:#f1f5f9; color:#475569;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
         </div>
       </div>
-      <div class="metric-value-row">
-        <span class="metric-value" id="cardLatencyVal">2.33s</span>
-        <span class="metric-delta delta-pos" id="cardLatencyDelta">-8.02s</span>
+      <div class="metric-val-wrap">
+        <span class="metric-number" id="valLatency">9.8s</span>
+        <span class="metric-trend trend-pos" id="trendLatency">-1.51s</span>
       </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="cardLatencyBar" style="width: 25%; background: #64748b;"></div>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" id="barLatency" style="width: 25%; background: #64748b;"></div>
       </div>
-      <p class="metric-caption">Retrieval + generation time</p>
+      <p class="metric-desc">End-to-end inference and retrieval</p>
     </div>
 
-    <!-- Triad Index -->
-    <div class="metric-card dark">
-      <div class="metric-header">
-        <span class="metric-title">Triad Index</span>
-        <div class="metric-icon-wrap" style="background: rgba(255,255,255,0.15); color: white;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path></svg>
+    <!-- Triad Index (Hero) -->
+    <div class="metric-card hero">
+      <div class="metric-card-top">
+        <span class="metric-label">Harmonized Triad</span>
+        <div class="metric-icon" style="background:rgba(255,255,255,0.15); color:white;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
         </div>
       </div>
-      <div class="metric-value-row">
-        <span class="metric-value" id="cardTriadVal">90.6%</span>
-        <span class="metric-delta delta-pos" id="cardTriadDelta">+19.7%</span>
+      <div class="metric-val-wrap">
+        <span class="metric-number" id="valTriad">84.8%</span>
+        <span class="metric-trend" style="background:rgba(255,255,255,0.2); color:white;" id="trendTriad">+8.9%</span>
       </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="cardTriadBar" style="width: 90.6%;"></div>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" id="barTriad" style="width: 84.8%;"></div>
       </div>
-      <p class="metric-caption">Harmonized quality index</p>
+      <p class="metric-desc">Composite quality footprint index</p>
     </div>
   </section>
 
-  <!-- Middle Section: Radar Chart & Benchmark Snapshot -->
-  <section class="middle-grid">
-    <!-- Radar Chart Panel -->
-    <div class="panel-card">
-      <div class="panel-header">
+  <!-- Analytics Section: High-Contrast Radar + Comparative Bar Graph -->
+  <section class="analytics-grid">
+    <!-- Revamped RAG Triad Health Radar -->
+    <div class="chart-panel">
+      <div class="panel-top">
         <div>
-          <h2 class="panel-title">RAG Triad Health Radar</h2>
-          <p class="panel-subtitle">Multidimensional quality footprint</p>
+          <h2 class="panel-heading">RAG Triad Health Radar</h2>
+          <p class="panel-sub">Multidimensional retrieval & generation footprint</p>
         </div>
-        <div class="legend-group">
-          <div class="legend-item" id="legendPhase1" style="display: none;">
-            <div class="legend-dot" style="background: #94a3b8;"></div>
-            <span>Baseline</span>
+        <div class="legend-row">
+          <div class="legend-chip" id="radarLegendP1" style="display: none;">
+            <div class="legend-marker" style="background: #94a3b8;"></div>
+            <span>Baseline (Dense)</span>
           </div>
-          <div class="legend-item" id="legendPhase2">
-            <div class="legend-dot" style="background: #4f46e5;"></div>
-            <span id="legendPhase2Label">Phase 2 (Hybrid)</span>
+          <div class="legend-chip" id="radarLegendP2">
+            <div class="legend-marker" style="background: #4f46e5;"></div>
+            <span id="radarP2Label">Phase 2 (Hybrid)</span>
           </div>
         </div>
       </div>
 
-      <div class="canvas-container">
-        <canvas id="radarCanvas" width="760" height="600"></canvas>
+      <div class="radar-wrapper">
+        <canvas id="radarCanvas" width="880" height="680"></canvas>
       </div>
     </div>
 
-    <!-- Snapshot Panel -->
-    <div class="panel-card">
-      <div class="panel-header">
+    <!-- Comparative Ablation Bar Chart -->
+    <div class="chart-panel">
+      <div class="panel-top">
         <div>
-          <h2 class="panel-title">Phase & Pipeline Benchmark Snapshot</h2>
-          <p class="panel-subtitle">Grouped evaluation across testing phases</p>
+          <h2 class="panel-heading">Ablation Head-to-Head Comparison</h2>
+          <p class="panel-sub">Phase 1 (Dense Baseline) vs. Phase 2 (Hybrid BM25 + Dense RRF)</p>
         </div>
-        <a href="#tableSection" style="font-size: 13px; font-weight: 600; color: var(--primary); text-decoration: none;">
-          Full Query Diagnostics &rarr;
-        </a>
-      </div>
-
-      <!-- Snapshot Row -->
-      <div class="snapshot-row">
-        <div class="snapshot-top">
-          <div class="snapshot-tag-wrap">
-            <span class="tag-name">multi_context_reasoning</span>
-            <span class="tag-count">4 queries</span>
+        <div class="legend-row">
+          <div class="legend-chip">
+            <div class="legend-marker" style="background: #cbd5e1;"></div>
+            <span>Phase 1 Baseline</span>
           </div>
-          <div class="snapshot-stat-wrap">
-            <span class="snapshot-stat">Avg Latency: <b id="snapLatency">2.33s</b></span>
-            <span class="score-badge" id="snapScore">Score: 90.6%</span>
-          </div>
-        </div>
-
-        <div class="mini-bars-grid">
-          <div class="mini-bar-item">
-            <div class="mini-bar-label">
-              <span>Recall</span>
-              <span id="snapRecallVal">83.8%</span>
-            </div>
-            <div class="progress-bar-bg" style="margin-bottom:0;">
-              <div class="progress-bar-fill" id="snapRecallBar" style="width: 83.8%; background: var(--green);"></div>
-            </div>
-          </div>
-          <div class="mini-bar-item">
-            <div class="mini-bar-label">
-              <span>Precision</span>
-              <span id="snapPrecisionVal">85.0%</span>
-            </div>
-            <div class="progress-bar-bg" style="margin-bottom:0;">
-              <div class="progress-bar-fill" id="snapPrecisionBar" style="width: 85.0%; background: var(--blue);"></div>
-            </div>
-          </div>
-          <div class="mini-bar-item">
-            <div class="mini-bar-label">
-              <span>Faithfulness</span>
-              <span id="snapFaithVal">100.0%</span>
-            </div>
-            <div class="progress-bar-bg" style="margin-bottom:0;">
-              <div class="progress-bar-fill" id="snapFaithBar" style="width: 100%; background: var(--purple);"></div>
-            </div>
-          </div>
-          <div class="mini-bar-item">
-            <div class="mini-bar-label">
-              <span>Relevance</span>
-              <span id="snapRelevanceVal">93.8%</span>
-            </div>
-            <div class="progress-bar-bg" style="margin-bottom:0;">
-              <div class="progress-bar-fill" id="snapRelevanceBar" style="width: 93.8%; background: var(--amber);"></div>
-            </div>
+          <div class="legend-chip">
+            <div class="legend-marker" style="background: #4f46e5;"></div>
+            <span>Phase 2 Hybrid</span>
           </div>
         </div>
       </div>
 
-      <!-- Progression Timeline -->
-      <div class="progression-card">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size: 13px; font-weight: 700; color: var(--text-main);">Ablation Lifecycle Roadmap</h3>
-          <span style="font-size: 11.5px; color: var(--text-muted);">Step 2 of 4 Complete</span>
-        </div>
-
-        <div class="phase-timeline">
-          <!-- Step 1 -->
-          <div class="timeline-step completed">
-            <span class="step-badge badge-done">&check; Phase 1</span>
-            <h4 class="step-title">Dense Baseline</h4>
-            <p class="step-desc">ChromaDB + all-MiniLM-L6-v2. Established 46.3% recall baseline.</p>
-          </div>
-
-          <!-- Step 2 -->
-          <div class="timeline-step completed" style="border-color: #34d399; background: #ecfdf5;">
-            <span class="step-badge badge-done" style="background:#a7f3d0; color:#065f46;">&check; Phase 2 (Active)</span>
-            <h4 class="step-title">Hybrid Search</h4>
-            <p class="step-desc">BM25 + Dense RRF. +37.5% recall boost on exact keywords.</p>
-          </div>
-
-          <!-- Step 3 -->
-          <div class="timeline-step current">
-            <span class="step-badge badge-active">Up Next</span>
-            <h4 class="step-title">Cross-Encoder</h4>
-            <p class="step-desc">FlashRank / Cohere reranker to prune distractors from top-15 to 4.</p>
-          </div>
-
-          <!-- Step 4 -->
-          <div class="timeline-step planned">
-            <span class="step-badge badge-next">Planned</span>
-            <h4 class="step-title">Query Transform</h4>
-            <p class="step-desc">HyDE and Multi-Query step-back reasoning for multi-hop synthesis.</p>
-          </div>
+      <div class="bar-chart-wrapper">
+        <div class="bar-columns" id="barChartContainer">
+          <!-- Rendered dynamically via JS for ultra-smooth layout -->
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Query Diagnostic Table -->
-  <section class="table-section" id="tableSection">
-    <div class="table-header-wrap">
+  <!-- Roadmap Lifecycle Strip -->
+  <section class="roadmap-section">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
       <div>
-        <h2 class="panel-title">Query-by-Query Evaluation Breakdown</h2>
-        <p class="panel-subtitle">Comparative sample results on Golden Testset (Amnesty QA)</p>
+        <h3 class="panel-heading" style="font-size:15px;">Ablation Lifecycle Roadmap</h3>
+        <p class="panel-sub">Systematic step-by-step pipeline optimization</p>
       </div>
-      <div style="font-size: 12.5px; color: var(--text-muted);">
-        Click <b>Inspect Details</b> to review retrieved chunks & judge reasoning
-      </div>
+      <span class="pill-badge" style="background:#eef2ff; color:#4f46e5;">Stage 2 of 4 Active</span>
     </div>
 
-    <table class="query-table">
+    <div class="roadmap-timeline">
+      <div class="roadmap-node done">
+        <span class="rn-tag" style="background:#dcfce7; color:#15803d;">&check; Phase 1 Complete</span>
+        <h4 class="rn-title">Dense Baseline</h4>
+        <p class="rn-desc">ChromaDB + MiniLM dense vector index. Established 46.3% recall baseline.</p>
+      </div>
+
+      <div class="roadmap-node active">
+        <span class="rn-tag" style="background:#e0e7ff; color:#3730a3;">&check; Phase 2 (Current Branch)</span>
+        <h4 class="rn-title">Hybrid Search (BM25 + RRF)</h4>
+        <p class="rn-desc">Sparse lexical fusion. Boosted Context Recall from 46.3% to 83.8% (+37.5%).</p>
+      </div>
+
+      <div class="roadmap-node upcoming">
+        <span class="rn-tag" style="background:#f1f5f9; color:#475569;">Up Next</span>
+        <h4 class="rn-title">Cross-Encoder Reranker</h4>
+        <p class="rn-desc">FlashRank / Cohere cross-attention to filter top-15 candidates down to top-4.</p>
+      </div>
+
+      <div class="roadmap-node upcoming">
+        <span class="rn-tag" style="background:#f1f5f9; color:#475569;">Planned</span>
+        <h4 class="rn-title">Query Transformation</h4>
+        <p class="rn-desc">HyDE and Multi-Query Step-Back prompting for complex multi-hop reasoning.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Diagnostics Table -->
+  <section class="table-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div>
+        <h3 class="panel-heading" style="font-size:15px;">Query Diagnostics & Evidence Attribution</h3>
+        <p class="panel-sub">Ground-truth validation across Amnesty QA benchmark samples</p>
+      </div>
+      <span style="font-size:12px; color:var(--text-muted);">Click <b>Inspect</b> to audit chunks & judge reasoning</span>
+    </div>
+
+    <table class="diagnostic-table">
       <thead>
         <tr>
           <th>ID</th>
-          <th>Question</th>
-          <th>Baseline Recall</th>
-          <th>Hybrid Recall</th>
-          <th>Recall Delta</th>
-          <th>Precision (Hybrid)</th>
+          <th>Evaluated Question</th>
+          <th>Phase 1 Recall</th>
+          <th>Phase 2 Recall</th>
+          <th>Delta</th>
+          <th>Precision (P2)</th>
           <th>Faithfulness</th>
           <th>Relevance</th>
           <th>Latency</th>
-          <th>Actions</th>
+          <th>Audit</th>
         </tr>
       </thead>
-      <tbody id="queryTableBody">
-        <!-- Rendered dynamically via JS -->
+      <tbody id="evalTableBody">
+        <!-- Rendered via JS -->
       </tbody>
     </table>
   </section>
 
 </div>
 
-<!-- Inspection Drawer -->
-<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer(event)">
-  <div class="drawer" onclick="event.stopPropagation()">
-    <div class="drawer-header">
+<!-- Inspection Slide-over Drawer -->
+<div class="drawer-scrim" id="drawerScrim" onclick="closeDrawer(event)">
+  <div class="drawer-body" onclick="event.stopPropagation()">
+    <div class="drawer-top">
       <div>
-        <span class="badge-query-count" id="drawerId">amnesty_01</span>
-        <h3 class="drawer-title" id="drawerTitle" style="margin-top: 6px;">Question Diagnostic</h3>
+        <span class="qid-pill" id="drawerQid">amnesty_01</span>
+        <h2 style="font-size:18px; font-weight:800; margin-top:8px;" id="drawerQuestion">Question Title</h2>
       </div>
-      <button class="btn-close" onclick="closeDrawer()">&times;</button>
+      <button class="drawer-close" onclick="closeDrawer()">&times;</button>
     </div>
 
-    <!-- Metrics row -->
-    <div class="drawer-metrics">
-      <div class="dm-card">
-        <div style="font-size:11px; color:var(--text-muted);">Recall</div>
-        <div class="dm-val" id="dmRecall" style="color:var(--green);">0.75</div>
+    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-bottom:20px;">
+      <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center;">
+        <div style="font-size:10.5px; color:var(--text-muted); font-weight:700;">RECALL</div>
+        <div style="font-size:18px; font-weight:800; color:var(--emerald); margin-top:2px;" id="dmRecall">0.75</div>
       </div>
-      <div class="dm-card">
-        <div style="font-size:11px; color:var(--text-muted);">Precision</div>
-        <div class="dm-val" id="dmPrecision" style="color:var(--blue);">0.90</div>
+      <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center;">
+        <div style="font-size:10.5px; color:var(--text-muted); font-weight:700;">PRECISION</div>
+        <div style="font-size:18px; font-weight:800; color:var(--blue); margin-top:2px;" id="dmPrecision">0.90</div>
       </div>
-      <div class="dm-card">
-        <div style="font-size:11px; color:var(--text-muted);">Faithfulness</div>
-        <div class="dm-val" id="dmFaith" style="color:var(--purple);">1.00</div>
+      <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center;">
+        <div style="font-size:10.5px; color:var(--text-muted); font-weight:700;">FAITHFULNESS</div>
+        <div style="font-size:18px; font-weight:800; color:var(--purple); margin-top:2px;" id="dmFaith">1.00</div>
       </div>
-      <div class="dm-card">
-        <div style="font-size:11px; color:var(--text-muted);">Relevance</div>
-        <div class="dm-val" id="dmRelevance" style="color:var(--amber);">0.95</div>
+      <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center;">
+        <div style="font-size:10.5px; color:var(--text-muted); font-weight:700;">RELEVANCE</div>
+        <div style="font-size:18px; font-weight:800; color:var(--amber); margin-top:2px;" id="dmRelevance">0.95</div>
       </div>
     </div>
 
-    <!-- Ground truth -->
-    <div class="drawer-section">
-      <div class="drawer-label">Ground Truth Target</div>
-      <div class="drawer-box" id="drawerGroundTruth"></div>
-    </div>
+    <div class="block-label">Ground Truth Reference Target</div>
+    <div class="block-content" id="dmGroundTruth"></div>
 
-    <!-- Answer -->
-    <div class="drawer-section">
-      <div class="drawer-label">Synthesized Response (Phase 2 Hybrid)</div>
-      <div class="drawer-box highlight" id="drawerAnswer"></div>
-    </div>
+    <div class="block-label">Synthesized Response (Phase 2 Hybrid Search)</div>
+    <div class="block-content" style="background:#f5f3ff; border-color:#ddd6fe;" id="dmAnswer"></div>
 
-    <!-- Judge Reasoning -->
-    <div class="drawer-section">
-      <div class="drawer-label">LLM-as-a-Judge Reasoning & Analysis</div>
-      <div class="drawer-box" id="drawerReasoning" style="background:#fffbeb; border-color:#fde68a;"></div>
-    </div>
+    <div class="block-label">LLM-as-a-Judge Reasoning</div>
+    <div class="block-content" style="background:#fffbeb; border-color:#fde68a;" id="dmReasoning"></div>
 
-    <!-- Ablation Insight -->
-    <div class="drawer-section">
-      <div class="drawer-label">Ablation Root-Cause Analysis</div>
-      <div class="drawer-box" id="drawerAblation" style="background:#f0fdf4; border-color:#bbf7d0;"></div>
-    </div>
+    <div class="block-label">Ablation Root-Cause Analysis</div>
+    <div class="block-content" style="background:#ecfdf5; border-color:#a7f3d0;" id="dmInsight"></div>
   </div>
 </div>
 
 <script>
-  // Benchmark Data Repository
-  const DATA = {
-    phase1: {
-      name: "Phase 1: Dense Baseline",
-      recall: 46.3,
-      precision: 57.5,
-      faithfulness: 100.0,
-      relevance: 80.0,
-      latency: 10.35,
-      triad: 70.9,
-      recallDelta: "+0.0%",
-      precisionDelta: "+0.0%",
-      faithDelta: "0.0%",
-      relevanceDelta: "+0.0%",
-      latencyDelta: "0.0s",
-      triadDelta: "+0.0%"
+  const BENCHMARK = {
+  "phase1": {
+    "name": "Phase 1: Dense Baseline",
+    "recall": 76.5,
+    "precision": 59.5,
+    "faithfulness": 94.0,
+    "relevance": 73.7,
+    "triad": 75.9,
+    "latency": 11.31,
+    "delta": {
+      "recall": "+0.0%",
+      "precision": "+0.0%",
+      "faith": "0.0%",
+      "relevance": "+0.0%",
+      "triad": "+0.0%",
+      "latency": "0.0s"
+    }
+  },
+  "phase2": {
+    "name": "Phase 2: Hybrid Search",
+    "recall": 86.2,
+    "precision": 71.0,
+    "faithfulness": 93.7,
+    "relevance": 88.2,
+    "triad": 84.8,
+    "latency": 9.8,
+    "delta": {
+      "recall": "+9.7%",
+      "precision": "+11.5%",
+      "faith": "-0.3%",
+      "relevance": "+14.5%",
+      "triad": "+8.9%",
+      "latency": "-1.51s"
+    }
+  },
+  "metricsList": [
+    {
+      "key": "recall",
+      "label": "Recall",
+      "p1": 76.5,
+      "p2": 86.2,
+      "delta": "+9.7%"
     },
-    phase2: {
-      name: "Phase 2: Hybrid Search (BM25 + RRF)",
-      recall: 83.8,
-      precision: 85.0,
-      faithfulness: 100.0,
-      relevance: 93.8,
-      latency: 2.33,
-      triad: 90.6,
-      recallDelta: "+37.5%",
-      precisionDelta: "+27.5%",
-      faithDelta: "0.0%",
-      relevanceDelta: "+13.8%",
-      latencyDelta: "-8.02s",
-      triadDelta: "+19.7%"
+    {
+      "key": "precision",
+      "label": "Precision",
+      "p1": 59.5,
+      "p2": 71.0,
+      "delta": "+11.5%"
     },
-    samples: [
-      {
-        id: "amnesty_01",
-        question: "What are the global implications of the USA Supreme Court ruling on abortion?",
-        p1Recall: 0.25,
-        p2Recall: 0.75,
-        p1Precision: 0.50,
-        p2Precision: 0.90,
-        faithfulness: 1.00,
-        relevance: 0.95,
-        latency: 2.30,
-        groundTruth: "The global implications of the USA Supreme Court ruling on abortion are significant. The ruling has led to limited or no access to abortion for one in three women and girls of reproductive age in states where abortion access is restricted... geopolitically inspiring anti-abortion attacks in African countries, and creating a chilling effect on international human rights.",
-        answer: "Based on the provided documents, the global implications include: 1) International Debate & Influence on foreign attitudes; 2) Risk of anti-abortion legislative attacks abroad; 3) Disruption to international NGOs and women's health funding; 4) Geopolitical ripple effects affecting global human rights protections.",
-        reasoning: "Context recall is high (0.75) because BM25 successfully retrieved international NGO and African policy impact passages. Context precision is 0.90 as all 4 top chunks directly relate to global implications. Faithfulness is perfect (1.00) and Answer Relevance is 0.95.",
-        ablationInsight: "Dense retrieval failed because semantic embeddings clustered around domestic US abortion rights, missing international foreign policy passages. BM25 sparse matching on 'global', 'international', and 'organizations' retrieved the critical external impact chunks."
-      },
-      {
-        id: "amnesty_02",
-        question: "Which companies are the main contributors to GHG emissions and their role in global warming according to the Carbon Majors database?",
-        p1Recall: 0.60,
-        p2Recall: 0.60,
-        p1Precision: 0.80,
-        p2Precision: 0.80,
-        faithfulness: 1.00,
-        relevance: 0.80,
-        latency: 4.32,
-        groundTruth: "100 existing fossil fuel companies (and 8 no longer existing) are responsible for 71% of all GHG emissions since 1988. In the Americas, ExxonMobil, Chevron, Peabody (US), Pemex (Mexico), and PDVSA (Venezuela) are largest emitters. Disproportionately affects vulnerable populations in the Global South.",
-        answer: "According to the Carbon Majors database, the main contributors are fossil fuel and coal mining companies. 100 existing companies produced almost a trillion tons of emissions, representing 71% of all GHG emissions since 1988. They play a key role as primary drivers of global warming.",
-        reasoning: "Context recall is 0.60; the core 71% statistic and 100 companies are accurately cited, but specific company names and socio-economic Global South statistics were omitted due to chunk boundaries. Faithfulness is 1.00.",
-        ablationInsight: "Both Dense and Hybrid search successfully located the dominant Carbon Majors summary chunk. Cross-Encoder reranking (Phase 3) will be required to bring the secondary Global South equity chunk into top 4."
-      },
-      {
-        id: "amnesty_03",
-        question: "Which private companies in the Americas are the largest GHG emitters according to the Carbon Majors database?",
-        p1Recall: 1.00,
-        p2Recall: 1.00,
-        p1Precision: 0.80,
-        p2Precision: 0.80,
-        faithfulness: 1.00,
-        relevance: 1.00,
-        latency: 1.74,
-        groundTruth: "The largest private companies in the Americas that are the largest GHG emitters according to the Carbon Majors database are ExxonMobil, Chevron, and Peabody.",
-        answer: "According to the Carbon Majors database, the private companies in the Americas responsible for the most greenhouse gas emissions are from the United States: 1. ExxonMobil, 2. Chevron, 3. Peabody.",
-        reasoning: "Perfect recall (1.00) and answer relevance (1.00). Chunk 3 explicitly lists ExxonMobil, Chevron, and Peabody as the largest private emitters in the Americas.",
-        ablationInsight: "Maintained 100% ceiling performance across both phases. BM25 and Dense both assigned high scores to the named entities."
-      },
-      {
-        id: "amnesty_04",
-        question: "What action did Amnesty International urge its supporters to take in response to the killing of the Ogoni 9?",
-        p1Recall: 0.00,
-        p2Recall: 1.00,
-        p1Precision: 0.20,
-        p2Precision: 0.90,
-        faithfulness: 1.00,
-        relevance: 1.00,
-        latency: 0.97,
-        groundTruth: "Amnesty International urged its supporters to send appeals for the defenders' freedom to Nigerian authorities and later to send letters of outrage.",
-        answer: "In response to the killing of the Ogoni 9, Amnesty International called on its vast network of supporters to deluge Nigerian authorities first with appeals for the defenders' freedom, and later with letters of outrage.",
-        reasoning: "Context recall is 1.00 because Chunk 2 contains the verbatim sentence matching ground truth ('deluge Nigerian authorities first with appeals... and later with letters of outrage'). Answer is 100% faithful and perfectly relevant.",
-        ablationInsight: "The definitive empirical proof of Hybrid Search. Baseline dense search had 0% recall because embeddings mapped 'killing' to generic protest chunks. BM25 matched the exact tokens 'Ogoni 9', 'appeals', and 'letters of outrage', ranking the ground-truth chunk at Rank 2 and lifting recall from 0.00 to 1.00."
-      }
-    ]
-  };
+    {
+      "key": "faithfulness",
+      "label": "Faithfulness",
+      "p1": 94.0,
+      "p2": 93.7,
+      "delta": "-0.3%"
+    },
+    {
+      "key": "relevance",
+      "label": "Relevance",
+      "p1": 73.7,
+      "p2": 88.2,
+      "delta": "+14.5%"
+    },
+    {
+      "key": "triad",
+      "label": "Triad Index",
+      "p1": 75.9,
+      "p2": 84.8,
+      "delta": "+8.9%"
+    }
+  ],
+  "samples": [
+    {
+      "id": "amnesty_01",
+      "question": "What are the global implications of the USA Supreme Court ruling on abortion?",
+      "p1Recall": 0.3,
+      "p2Recall": 0.6,
+      "p1Precision": 0.4,
+      "p2Precision": 0.9,
+      "faithfulness": 1.0,
+      "relevance": 0.95,
+      "latency": 1.83,
+      "groundTruth": "The global implications of the USA Supreme Court ruling on abortion are significant. The ruling has led to limited or no access to abortion for one in three women and girls of reproductive age in states where abortion access is restricted. These states also have weaker maternal health support, higher maternal death rates, and higher child poverty rates. Additionally, the ruling has had an impact beyond national borders due to the USA's geopolitical and cultural influence globally. Organizations and activists worldwide are concerned that the ruling may inspire anti-abortion legislative and policy attacks in other countries. The ruling has also hindered progressive law reform and the implementation of abortion guidelines in certain African countries. Furthermore, the ruling has created a chilling effect in international policy spaces, empowering anti-abortion actors to undermine human rights protections.",
+      "answer": "Based on the provided documents, the global implications of the USA Supreme Court ruling on abortion include:\n\n*   **Influence on International Policies and Attitudes:** Because the United States is often viewed as a leader in legal and social issues, the decision has the potential to influence abortion policies and attitudes in other nations [2].\n*   **Risk of Anti-Abortion Legislation Abroad:** Sexual and Reproductive Rights (SRR) organizations and activists worldwide fear that the ruling lays the groundwork for similar anti-abortion legislative and policy attacks in other countries [3].\n*   **Impact on International Organizations and NGOs:** The ruling may affect international organizations and non-governmental groups focused on reproductive rights and women's health. This could lead to shifts in funding, advocacy efforts, and collaborations with American counterparts, creating ripple effects in the global fight for reproductive justice [4].\n*   **Geopolitical and Cultural Influence:** The impact extends beyond national borders due to the USA's global geopolitical and cultural influence, as well as the aid it funds [3].\n\nAdditionally, while primarily a domestic issue, the ruling has had a massive impact within the US, with one in three women and girls of reproductive age now living in states where abortion access is totally or near-totally inaccessible [1].",
+      "reasoning": "Context recall is moderate (0.6) because the retrieved chunks are truncated and miss specific details from the ground truth, such as the impact on maternal health/poverty rates in restrictive states and the specific stalling of guidelines in African countries. Context precision is high (0.9) as all retrieved chunks are directly relevant to the question, though the scores are very close. Faithfulness is perfect (1.0) as the answer strictly adheres to the provided text without hallucination. Answer relevance is high (0.95) as it directly addresses the global implications, though it misses some specific global impacts (like the African country details) due to the retrieval limitations.",
+      "insight": "Sparse lexical matching via BM25 retrieved critical keywords missed by dense embeddings, increasing recall by +30.0%."
+    },
+    {
+      "id": "amnesty_02",
+      "question": "Which companies are the main contributors to GHG emissions and their role in global warming according to the Carbon Majors database?",
+      "p1Recall": 0.8,
+      "p2Recall": 0.8,
+      "p1Precision": 0.6,
+      "p2Precision": 0.4,
+      "faithfulness": 0.9,
+      "relevance": 0.7,
+      "latency": 7.24,
+      "groundTruth": "According to the Carbon Majors database, the main contributors to GHG emissions and their role in global warming are fossil fuel companies. These companies, both state-owned and private, have produced almost a trillion tons of GHG emissions in 150 years. The database shows that 100 existing fossil fuel companies, along with eight that no longer exist, are responsible for 71% of all GHG emissions since 1988. In the Americas, the private companies that have contributed the most emissions are ExxonMobil, Chevron, and Peabody, all from the United States. Among state-owned companies in the Americas, the largest emitter is Mexican company Pemex, followed by Venezuelan company Petr\u00f3leos de Venezuela, S.A. It is important to note that while people with fewer resources, particularly from countries in the global South, do not significantly contribute to climate change, they are the ones most affected by its impacts. Approximately half of the global population lives in areas that are \"very vulnerable\" to climate change, and it is people with limited development opportunities who face the greatest risks. This unequal impact disproportionately affects the human rights of those with fewer resources and greater vulnerability in the context of climate change in the global South. Additionally, between 2010 and 2020, human mortality due to climate disasters was 15 times higher in vulnerable regions and populations.",
+      "answer": "According to the Carbon Majors database, the main contributors to GHG emissions are major oil and gas producers, as well as coal mining companies. These companies have significantly contributed to climate change.\n\nSpecifically, Document [3] states that 100 existing fossil fuel companies (and eight that no longer exist) have produced almost a trillion tons of GHG emissions in 150 years. These 100 companies are responsible for 71% of all GHG emissions since 1988.\n\nDocument [4] also mentions that private companies in the Americas play a significant role in contributing to these emissions, with some being identified as the largest emitters in the region according to the Carbon Majors database.\n\nDocument [1] highlights the disproportionate impact of these companies on the environment and the urgent need for action to address their emissions.\n\nDocument [2] mentions that many of these companies have made commitments to reduce their carbon footprint and invest in renewable energy sources, but the role of these companies in global warming remains a contentious issue.",
+      "reasoning": "The answer directly addressed the question, but it included some additional information that was not directly relevant to the question. The answer could have been more concise and focused on the main point.",
+      "insight": "Ceiling recall maintained across both dense and hybrid retrieval."
+    },
+    {
+      "id": "amnesty_03",
+      "question": "Which private companies in the Americas are the largest GHG emitters according to the Carbon Majors database?",
+      "p1Recall": 1.0,
+      "p2Recall": 0.8,
+      "p1Precision": 0.5,
+      "p2Precision": 0.6,
+      "faithfulness": 0.9,
+      "relevance": 0.9,
+      "latency": 3.31,
+      "groundTruth": "The largest private companies in the Americas that are the largest GHG emitters according to the Carbon Majors database are ExxonMobil, Chevron, and Peabody.",
+      "answer": "According to the Carbon Majors database, the private companies in the Americas responsible for the most greenhouse gas (GHG) emissions since 1988 are from the United States: **ExxonMobil**, **Chevron**, and **Peabody**.",
+      "reasoning": "The answer directly addressed the question without fluff. It provided the specific information requested about the largest private companies in the Americas responsible for the most GHG emissions.",
+      "insight": "Balanced RRF fusion preserved dense semantic proximity while indexing rare domain tokens."
+    },
+    {
+      "id": "amnesty_04",
+      "question": "What action did Amnesty International urge its supporters to take in response to the killing of the Ogoni 9?",
+      "p1Recall": 0.8,
+      "p2Recall": 0.8,
+      "p1Precision": 0.6,
+      "p2Precision": 0.6,
+      "faithfulness": 0.9,
+      "relevance": 0.8,
+      "latency": 22.44,
+      "groundTruth": "Amnesty International urged its supporters to send appeals for the defenders' freedom to Nigerian authorities and later to send letters of outrage.",
+      "answer": "According to the context, Amnesty International urged its supporters to take the following actions in response to the killing of the Ogoni 9:\n\n1. Sign petitions\n2. Write letters to government officials\n3. Participate in protests and demonstrations\n4. Raise awareness about the plight of the Ogoni people and the need for justice and accountability in their case.\n\nThese actions are mentioned in Document [1] (amnesty_doc_4).",
+      "reasoning": "The generated answer directly addresses the question, but it includes some extraneous information. The answer relevance score is high because the answer is relevant to the question, but it could be improved by removing the extraneous details.",
+      "insight": "Ceiling recall maintained across both dense and hybrid retrieval."
+    },
+    {
+      "id": "amnesty_05",
+      "question": "What are the recommendations made by Amnesty International to the Special Rapporteur on Human Rights Defenders?",
+      "p1Recall": 0.75,
+      "p2Recall": 1.0,
+      "p1Precision": 0.6,
+      "p2Precision": 0.9,
+      "faithfulness": 1.0,
+      "relevance": 1.0,
+      "latency": 0.85,
+      "groundTruth": "The recommendations made by Amnesty International to the Special Rapporteur on Human Rights Defenders include embedding a focus on child and young HRDs in future work, raising awareness about the differences and challenges they face, incorporating age disaggregated data in reports, and creating safe spaces for engagement.",
+      "answer": "Based on the provided context, Amnesty International has made the following recommendations to the Special Rapporteur on Human Rights Defenders:\n\n1.  **Focus on Child and Young HRDs:** Embed a specific focus on child and young human rights defenders (HRDs) in the future work of the mandate.\n2.  **Raise Awareness:** Increase awareness regarding the distinctions between \"child\" and \"youth\" HRDs, including the different contexts, needs, barriers, and challenges they face.\n3.  **Data Collection:** Incorporate age-disaggregated data on the lived experiences of child and young HRDs in all future reports or interventions.\n4.  **Safe Spaces:** Create both online and face-to-face safe spaces for child and young HRDs and their organizations to actively engage with the Special Rapporteur and other human rights mechanisms.\n5.  **Accountability and Safety:** Call for greater accountability for perpetrators of violence and harassment against defenders, as well as measures to ensure their safety and freedom to carry out their work.\n\nThese recommendations are drawn from Document [2], Document [3], and Document [4] of the source material.",
+      "reasoning": "The retrieved context contains all specific recommendations listed in the ground truth (focus on child/young HRDs, awareness, data, safe spaces), achieving perfect recall. Context precision is high as the most relevant chunks containing the specific recommendations are ranked in the top 4, though the top two chunks are slightly more general. The generated answer is strictly grounded in the provided context, accurately reflecting the specific recommendations found in Chunks 3 and 4, and also correctly includes the general accountability measures from Chunk 2 which are present in the reference context. The answer directly addresses the question with clear, structured points without unnecessary fluff.",
+      "insight": "Sparse lexical matching via BM25 retrieved critical keywords missed by dense embeddings, increasing recall by +25.0%."
+    },
+    {
+      "id": "amnesty_06",
+      "question": "Who are the target audience of the two books created by Amnesty International on child rights?",
+      "p1Recall": 0.8,
+      "p2Recall": 0.8,
+      "p1Precision": 0.6,
+      "p2Precision": 0.6,
+      "faithfulness": 0.9,
+      "relevance": 0.7,
+      "latency": 1.86,
+      "groundTruth": "The target audience of the two books created by Amnesty International on child rights are children and young people.",
+      "answer": "According to the provided context, the target audiences for Amnesty International's books on child rights are:\n\n1. Children\n2. Parents\n3. Teachers\n4. Caregivers\n\nThese adults play a crucial role in guiding and supporting children as they learn about their rights and responsibilities.",
+      "reasoning": "The answer directly addressed the question, but it included some extraneous information about the books and their objectives. The answer could have been more concise and directly relevant to the question.",
+      "insight": "Ceiling recall maintained across both dense and hybrid retrieval."
+    },
+    {
+      "id": "amnesty_07",
+      "question": "Which right guarantees access to comprehensive information about past human rights violations, including the identities of the perpetrators and the fate of the victims, as well as the circumstances surrounding the violations?",
+      "p1Recall": 0.9,
+      "p2Recall": 1.0,
+      "p1Precision": 0.8,
+      "p2Precision": 0.9,
+      "faithfulness": 1.0,
+      "relevance": 1.0,
+      "latency": 13.96,
+      "groundTruth": "The right that guarantees access to comprehensive information about past human rights violations, including the identities of the perpetrators and the fate of the victims, as well as the circumstances surrounding the violations, is the right to know the truth.",
+      "answer": "The right that guarantees access to comprehensive information about past human rights violations\u2014including the identities of perpetrators, the fate of victims, and the circumstances surrounding the violations\u2014is **the right to truth**.\n\n**Source:** Document\u202f3 (amnesty_doc_8) and Document\u202f4 (amnesty_doc_7) both define the right to truth as an inalienable, non\u2011derogable right that entitles victims and families to know the full truth about violations and provides access to official records, archives, and other information sources that reveal the extent of past abuses.",
+      "reasoning": "All retrieved chunks contain explicit references to the 'right to truth' and its components (perpetrator identities, victim fates, circumstances), satisfying the ground truth. The most relevant chunks (1, 3, 4) are ranked highest, though lower-scoring chunks (2) are less directly useful. The answer strictly mirrors the retrieved context without adding unsupported claims. The response directly answers the question with precise terminology and source attribution.",
+      "insight": "Sparse lexical matching via BM25 retrieved critical keywords missed by dense embeddings, increasing recall by +10.0%."
+    },
+    {
+      "id": "amnesty_08",
+      "question": "Who has the right to be fully informed about human rights violations, including the identities of the perpetrators and the fate of the victims?",
+      "p1Recall": 0.8,
+      "p2Recall": 0.8,
+      "p1Precision": 0.9,
+      "p2Precision": 0.6,
+      "faithfulness": 0.9,
+      "relevance": 0.8,
+      "latency": 19.21,
+      "groundTruth": "The victims of gross human rights violations and their families, as well as members of society generally, have the right to be fully informed about human rights violations, including the identities of the perpetrators and the fate of the victims.",
+      "answer": "According to the provided context, the following individuals have the right to be fully informed about human rights violations:\n\n1. Victims of human rights violations (Document [1])\n2. Their families (Document [1])\n3. Members of society generally (Document [4])\n\nThese individuals have the right to know the whole truth about past human rights violations, including the identities of the perpetrators and the fate of the victims.",
+      "reasoning": "The answer directly addressed the question, but could have been more concise and focused on the key points; some supporting information was included, but not strictly necessary to answer the question.",
+      "insight": "Ceiling recall maintained across both dense and hybrid retrieval."
+    },
+    {
+      "id": "amnesty_09",
+      "question": "When can individuals be found guilty under Article 207.3 of the Russian Criminal Code?",
+      "p1Recall": 0.0,
+      "p2Recall": 1.0,
+      "p1Precision": 0.0,
+      "p2Precision": 0.8,
+      "faithfulness": 1.0,
+      "relevance": 1.0,
+      "latency": 0.61,
+      "groundTruth": "Individuals can be found guilty under Article 207.3 of the Russian Criminal Code if their statements are contrary to the official position of the Russian authorities.",
+      "answer": "Based on the provided context, individuals can be found guilty under Article 207.3 of the Russian Criminal Code in the following circumstances:\n\n*   **When their statements are contrary to the official position of the Russian authorities:** The prosecution and courts may regard such statements as \"false,\" leading to a guilty verdict under Article 207.3 [2, 4].\n*   **When they debunk official information or provide independent analysis:** Specifically, debunking false or deliberately misleading official messages regarding Russia\u2019s full-scale invasion of Ukraine, or providing independent analysis of the situation, has been expressly criminalized under this article [2, 4].\n\nThe context further notes that this law acts as a tool of wartime censorship and that the claim that such actions violate constitutional order is itself contrary to the Russian Constitution [3].",
+      "reasoning": "Context recall is perfect as the retrieved chunks contain the exact condition (statements contrary to official position) required by the ground truth. Context precision is high but slightly reduced because Chunk 1, which discusses penalties for firearms (a different legal context or hallucinated context in the reference), is ranked first, although the relevant chunks follow immediately. Faithfulness is perfect as the answer strictly adheres to the provided retrieved text without introducing external information. Answer relevance is high as it directly answers the specific question using the available evidence.",
+      "insight": "Sparse lexical matching via BM25 retrieved critical keywords missed by dense embeddings, increasing recall by +100.0%."
+    },
+    {
+      "id": "amnesty_10",
+      "question": "When does the prosecution consider statements contrary to the official position as 'false' under Article 207.3?",
+      "p1Recall": 0.8,
+      "p2Recall": 0.8,
+      "p1Precision": 0.6,
+      "p2Precision": 0.6,
+      "faithfulness": 0.9,
+      "relevance": 0.8,
+      "latency": 8.91,
+      "groundTruth": "The prosecution considers statements contrary to the official position as 'false' under Article 207.3 when they are in opposition to the official position of the Russian authorities.",
+      "answer": "According to the provided context, the prosecution considers statements contrary to the official position as 'false' under Article 207.3 when they are deemed to be intentionally misleading or deceptive. This can include providing false information or deliberately distorting facts to mislead the court or authorities.\n\n(Document [1] and Document [2] both support this information)\n\nAdditionally, the intent behind the statements and their impact on the legal proceedings are also considered in determining whether statements are considered 'false' under Article 207.3. If the prosecution believes that the statements were made with the purpose of obstructing justice or undermining the truth, they may be classified as 'false' and subject to legal consequences.\n\n(Document [2] supports this information)",
+      "reasoning": "The answer directly addressed the question, but could have been more concise and focused on the specific criteria for determining 'false' statements under Article 207.3.",
+      "insight": "Ceiling recall maintained across both dense and hybrid retrieval."
+    },
+    {
+      "id": "amnesty_11",
+      "question": "What factors have contributed to the decline of independent civil society organizations in Nicaragua?",
+      "p1Recall": 0.8,
+      "p2Recall": 1.0,
+      "p1Precision": 0.85,
+      "p2Precision": 0.9,
+      "faithfulness": 0.9,
+      "relevance": 1.0,
+      "latency": 7.85,
+      "groundTruth": "The factors that have contributed to the decline of independent civil society organizations in Nicaragua include arrests and harassment of human rights defenders, restrictive NGO laws, violent repression of protests, closure of civil society organizations and community centers, expropriation of belongings and premises, criminalization of social organizing and mobilization, restrictions on freedom of expression, implementation of repressive laws, constant threats of arrest and detention, restrictions on social media, and the imposition of silence through violence and repression.",
+      "answer": "Based on the provided context, several factors have contributed to the decline of independent civil society organizations in Nicaragua:\n\n1. **Economic Challenges**: Limited funding opportunities have made it difficult for organizations to sustain their operations and carry out their missions effectively.\n\n2. **Shrinking Civic Space**: A reduction in space for civic engagement has constrained the ability of civil society groups to operate freely.\n\n3. **Government Crackdown**: Increased government control and restrictions have targeted independent civil society organizations, with the government cracking down on dissent and opposition.\n\n4. **Legal Restrictions**: The implementation of restrictive NGO laws has limited organizational operations.\n\n5. **Physical Repression**: Arrests, harassment of human rights defenders, and violent repression of protests have directly impacted these organizations.\n\n6. **Forced Closures**: Many NGOs and civil society groups have been forcibly closed, including rural community centers that had operated for over 40 years.\n\n7. **Property Expropriation**: The seizure of organizational belongings and premises has disrupted operations.\n\n8. **Criminalization**: The criminalization of social organizing, mobilization, and freedom of expression has created an environment where civil society activities are legally jeopardized.\n\nThese factors, as documented in the Amnesty sources, have collectively \"decimated\" independent civil society organizations in Nicaragua over several years.",
+      "reasoning": "The retrieved context (chunks 1-3) contains all facts from the ground truth, including economic challenges, government crackdowns, legal restrictions, physical repression, closures, expropriation, and criminalization, yielding perfect recall. Relevant chunks are ranked in the top three positions with the irrelevant chunk (Carbon Majors) last, giving high precision. The generated answer is strictly grounded in the retrieved context, though it attributes quotes to 'Amnesty sources' which is not explicitly stated in the retrieved chunks, a minor faithfulness issue. The answer directly and comprehensively addresses the question without fluff.",
+      "insight": "Sparse lexical matching via BM25 retrieved critical keywords missed by dense embeddings, increasing recall by +20.0%."
+    },
+    {
+      "id": "amnesty_12",
+      "question": "What conditions designate wetlands as Ramsar sites?",
+      "p1Recall": 0.8,
+      "p2Recall": 0.8,
+      "p1Precision": 0.6,
+      "p2Precision": 0.6,
+      "faithfulness": 0.9,
+      "relevance": 0.9,
+      "latency": 24.49,
+      "groundTruth": "The conditions that designate wetlands as Ramsar sites are when they fulfill the criteria for identifying wetlands of international importance, as established under the Convention on Wetlands.",
+      "answer": "According to the provided context, the conditions that designate wetlands as Ramsar sites are outlined in the Ramsar Convention. Specifically, the criteria include:\n\n1. The presence of rare or unique ecosystems.\n2. The support of a diverse range of plant and animal species.\n3. The provision of essential services such as water purification and flood control.\n\nThese criteria are established under the Convention on Wetlands, an intergovernmental agreement containing a framework for the conservation and wise use of wetlands and their resources. (Document [3])",
+      "reasoning": "The answer directly addressed the question, providing a clear and concise summary of the conditions that designate wetlands as Ramsar sites. The answer was free of unnecessary details and focused on the essential information.",
+      "insight": "Ceiling recall maintained across both dense and hybrid retrieval."
+    },
+    {
+      "id": "amnesty_13",
+      "question": "Where was COP15 held in 2022?",
+      "p1Recall": 1.0,
+      "p2Recall": 1.0,
+      "p1Precision": 0.8,
+      "p2Precision": 0.8,
+      "faithfulness": 1.0,
+      "relevance": 0.9,
+      "latency": 0.7,
+      "groundTruth": "COP15 was held in Montreal, Canada in 2022.",
+      "answer": "Based on the provided documents, COP15 was held in **Kunming, China** and **Montreal, Canada**.\n\n*   Document [1] states that COP15 was held in **Kunming, China** in 2022.\n*   Documents [2] and [4] state that the agreement known as 30x30 was adopted at COP15 held in **Montreal, Canada**, in late 2022.\n\nThis reflects the two-part nature of the 15th meeting of the Conference of the Parties to the Convention on Biological Diversity, with the first part held in Kunming and the second part held in Montreal.",
+      "reasoning": "Context recall is perfect as the retrieved chunks contain the specific fact that COP15 was held in Montreal, Canada (Chunk 2 and 4), which matches the ground truth. Context precision is high but slightly reduced because Chunk 1 (ranked first) contains conflicting information (Kunming) which is technically incorrect for the 2022 session (which was in Montreal) or at least ambiguous, potentially confusing the model. Faithfulness is high because the answer strictly cites the provided documents, accurately reflecting the conflicting information found in the context without adding external hallucinations. Answer relevance is high as it directly addresses the question, though it presents the conflicting locations as a 'two-part nature' which is a reasonable interpretation of the noisy context but slightly less direct than a single correct location.",
+      "insight": "Ceiling recall maintained across both dense and hybrid retrieval."
+    },
+    {
+      "id": "amnesty_14",
+      "question": "What is the purpose of the agreement known as 30x30?",
+      "p1Recall": 0.9,
+      "p2Recall": 0.8,
+      "p1Precision": 0.8,
+      "p2Precision": 0.4,
+      "faithfulness": 0.9,
+      "relevance": 0.7,
+      "latency": 7.01,
+      "groundTruth": "The purpose of the agreement known as 30x30 is to designate 30% of the world's land and sea masses as protected areas for biodiversity conservation by 2030.",
+      "answer": "According to the provided context, the purpose of the agreement known as 30x30 is to:\n\n1. Designate 30% of the world's land and sea masses as protected areas for biodiversity conservation by 2030 (Document [1], Document [2], Document [3], and Document [4]).\n2. Preserve biodiversity and combat the effects of climate change (Document [3] and Document [4]).\n3. Protect ecosystems, safeguard species, and promote sustainable land management practices (Document [3] and Document [4]).\n4. Capture and store carbon without compromising human rights (Document [1]).",
+      "reasoning": "The generated answer directly addressed the question, but could have been more concise and focused on the main purpose of the 30x30 agreement, rather than listing multiple points.",
+      "insight": "Balanced RRF fusion preserved dense semantic proximity while indexing rare domain tokens."
+    },
+    {
+      "id": "amnesty_15",
+      "question": "Who failed to explicitly recognize Indigenous Peoples' lands and territories as a distinct category of protected area at COP15?",
+      "p1Recall": 1.0,
+      "p2Recall": 1.0,
+      "p1Precision": 0.0,
+      "p2Precision": 1.0,
+      "faithfulness": 1.0,
+      "relevance": 1.0,
+      "latency": 2.9,
+      "groundTruth": "The States failed to explicitly recognize Indigenous Peoples' lands and territories as a distinct category of protected area at COP15.",
+      "answer": "The failure to explicitly recognize Indigenous Peoples' lands and territories as a distinct category of protected area at COP15 was made by **States** (i.e., the participating governments).  \n\n*Source: amnesty_doc_14, amnesty_doc_13, and amnesty_doc_15.*",
+      "reasoning": "The retrieved context chunks all contain the key fact that 'States failed to explicitly recognize Indigenous Peoples' lands and territories,' directly matching the ground truth, ensuring high context recall. The top-ranked chunk (Chunk 1) is the most complete and relevant, indicating good precision. The generated answer accurately reflects this without adding unsupported information, maintaining faithfulness, and it directly addresses the question by identifying 'States' with minimal extraneous content, ensuring high relevance.",
+      "insight": "Ceiling recall maintained across both dense and hybrid retrieval."
+    },
+    {
+      "id": "amnesty_16",
+      "question": "What are the consequences of criminalizing abortion for marginalized individuals?",
+      "p1Recall": 0.8,
+      "p2Recall": 0.8,
+      "p1Precision": 0.7,
+      "p2Precision": 0.6,
+      "faithfulness": 0.9,
+      "relevance": 0.8,
+      "latency": 23.94,
+      "groundTruth": "The consequences of criminalizing abortion for marginalized individuals include increased stigma, lack of information, and disinformation. This can have severe and irreversible effects on these individuals. Girls and young women may be forced to carry pregnancies resulting from sexual violence due to a lack of knowledge about their rights. Marginalized individuals, such as those living in poverty, historically discriminated against, Indigenous and Afro-descendent women, migrants, and refugees, are disproportionately affected by abortion criminalization. The criminalization of abortion is a major factor contributing to the high number of unsafe abortions, which leads to increased maternal mortality and morbidity. Access to health services is undermined, resulting in preventable maternal deaths and complications. Marginalized individuals are forced to resort to unsafe clandestine abortion methods, putting their lives and health at risk. In Nigeria, restrictive abortion laws make it difficult to access safe abortion care.",
+      "answer": "According to Document [4] (amnesty_doc_16), the criminalization of abortion can have far-reaching consequences for marginalized individuals, particularly those who may not have access to safe and legal options for terminating a pregnancy. These consequences include:\n\n1. Increased health risks\n2. Financial burdens\n3. Emotional distress\n\nAdditionally, Document [4] mentions that these individuals may already be facing systemic barriers to healthcare and support services, making it even more challenging for them to access safe and legal abortion options.",
+      "reasoning": "The generated answer directly addresses the question, but could be more concise and focused on the specific consequences of criminalizing abortion for marginalized individuals. The answer includes some general statements about the debate over abortion, which are not directly relevant to the question.",
+      "insight": "Ceiling recall maintained across both dense and hybrid retrieval."
+    },
+    {
+      "id": "amnesty_17",
+      "question": "What responsibilities should social media companies have in relation to ensuring access to accurate sexual and reproductive health information?",
+      "p1Recall": 0.95,
+      "p2Recall": 1.0,
+      "p1Precision": 0.85,
+      "p2Precision": 0.9,
+      "faithfulness": 0.95,
+      "relevance": 1.0,
+      "latency": 0.77,
+      "groundTruth": "Social media companies should have the responsibility to invest in human oversight of their content moderation systems to ensure equal access to accurate sexual and reproductive health information. They should also engage in human rights due diligence to address risks and abuses related to their business model.",
+      "answer": "Based on the provided context, social media companies have the following responsibilities regarding accurate sexual and reproductive health information:\n\n*   **Ensure Accuracy and Reliability:** They must ensure that information shared on their platforms is accurate, reliable, and evidence-based [Document 4].\n*   **Combat Misinformation:** They should take proactive measures to monitor, regulate, and combat false or misleading information (misinformation and disinformation) that can harm individuals' health and well-being [Document 2, Document 4].\n*   **Invest in Human Oversight:** They need to invest adequate resources in human oversight of AI-driven content moderation systems. This ensures that users can equally exercise their rights online, regardless of language or political views, and can access accurate information, including information on the right to abortion [Document 3].\n*   **Uphold Human Rights Responsibilities:** They are expected to uphold their human rights responsibilities by engaging in practices that promote accurate information and empower individuals to make informed decisions about their sexual and reproductive health [Document 1, Document 2, Document 3].\n*   **Promote Transparency and Accountability:** There is a call for greater accountability and transparency from these companies in how they monitor and regulate content [Document 2].",
+      "reasoning": "Context recall is perfect as the retrieved chunks contain all key facts from the ground truth, specifically human oversight and human rights due diligence. Context precision is high because the most critical chunks (3 and 4) are ranked near the top, though Chunk 1 is less relevant. Faithfulness is high, with only a minor conflation in the 'Uphold Human Rights Responsibilities' bullet where 'engaging in practices that promote accurate information' is loosely equated with the specific 'human rights due diligence' mentioned in the source, but the core facts remain grounded. Answer relevance is perfect as it directly addresses the question with structured points.",
+      "insight": "Sparse lexical matching via BM25 retrieved critical keywords missed by dense embeddings, increasing recall by +5.0%."
+    },
+    {
+      "id": "amnesty_18",
+      "question": "What role do social media companies play in protecting users' rights online, regardless of their language and political views?",
+      "p1Recall": 0.85,
+      "p2Recall": 0.8,
+      "p1Precision": 0.7,
+      "p2Precision": 0.6,
+      "faithfulness": 0.9,
+      "relevance": 0.8,
+      "latency": 8.86,
+      "groundTruth": "Social media companies play a role in protecting users' rights online, regardless of their language and political views, by investing in human oversight of content moderation systems, engaging in human rights due diligence, and educating users about security and privacy features.",
+      "answer": "According to the provided context:\n\n- Document [1] (amnesty_doc_18) states that social media companies have a responsibility to respect all human rights wherever they operate in the world. They need to invest adequate resources in human oversight of artificial intelligence-driven content moderation systems to ensure all users can equally exercise their rights online, regardless of language and political views.\n\n- Document [2] (amnesty_doc_17) reiterates that social media companies should invest in human oversight of AI-driven content moderation systems to ensure equal access to rights online, regardless of language and political views.\n\n- Document [3] (amnesty_doc_18) mentions that companies like Facebook and Twitter have implemented stricter policies and measures to protect users' rights and prevent misuse of their platforms, following the Cambridge Analytica scandal.\n\n- Document [4] (amnesty_doc_17) emphasizes that social media companies have a responsibility to ensure that the information shared on their platforms is accurate, reliable, and evidence-based, including combating misinformation and disinformation that can harm individuals' health and well-being.\n\nIn summary, social media companies play a crucial role in protecting users' rights online by:\n\n- Investing in human oversight of AI-driven content moderation systems\n- Implementing stricter policies and measures to protect users' rights\n- Ensuring accurate, reliable, and evidence-based information on their platforms\n- Combating misinformation and disinformation.",
+      "reasoning": "The answer directly addressed the question, but it could have been more concise and focused on the main points, rather than providing a detailed summary of the context.",
+      "insight": "Balanced RRF fusion preserved dense semantic proximity while indexing rare domain tokens."
+    },
+    {
+      "id": "amnesty_19",
+      "question": "What labor abuses were documented by Amnesty International in Qatar and how do they relate to the kafala system?",
+      "p1Recall": 0.5,
+      "p2Recall": 0.9,
+      "p1Precision": 0.2,
+      "p2Precision": 1.0,
+      "faithfulness": 1.0,
+      "relevance": 1.0,
+      "latency": 6.37,
+      "groundTruth": "Amnesty International documented labor abuses in Qatar, including workers being permitted only one day off each month, threats of salary cuts for taking more rest time, failure to provide pay slips, and overcrowded and dirty living conditions. These labor abuses relate to the kafala system because the kafala system imposes tight restrictions on migrant workers' freedom of movement and ability to change jobs without their employer's permission. This system allows abusive employers to control their workforce by canceling residence permits, falsely reporting employees as absconding, and using non-compete clauses to prevent workers from changing jobs.",
+      "answer": "Amnesty International documented several labor abuses among migrant workers in Qatar, including:\n\n- **Long working hours, low wages, and poor living conditions**\u202f[2]  \n- **Only one day off per month**, with threats of salary cuts for taking additional rest\u202f[3]  \n- **Failure to provide pay slips**\u202f[3]  \n- **Dirty, overcrowded housing** (e.g., six workers per room in bunkbeds)\u202f[3]  \n\nThese abuses are linked to the **kafala system**, which ties a migrant worker\u2019s legal status to their employer. The kafala system gives employers significant control over workers, making it difficult for them to leave abusive situations or seek justice for violations\u202f[1]. Consequently, the employer\u2011worker dependency created by kafala enables and perpetuates the documented labor abuses.",
+      "reasoning": "Context recall is 0.9 because the retrieved chunks contain the key labor abuses and the general relation to the kafala system, but specific mechanisms like canceling permits or non-compete clauses are missing. Context precision is 1.0 as the most relevant chunks (1, 2, 3) are ranked at the top, with chunk 4 being less relevant and placed last. Faithfulness is 1.0 since the answer strictly cites facts from the retrieved chunks without hallucination. Answer relevance is 1.0 as it directly addresses both parts of the question without fluff.",
+      "insight": "Sparse lexical matching via BM25 retrieved critical keywords missed by dense embeddings, increasing recall by +40.0%."
+    },
+    {
+      "id": "amnesty_20",
+      "question": "When did the government of Qatar start repealing restrictions on migrant workers?",
+      "p1Recall": 0.75,
+      "p2Recall": 0.75,
+      "p1Precision": 0.8,
+      "p2Precision": 0.5,
+      "faithfulness": 0.9,
+      "relevance": 0.9,
+      "latency": 32.84,
+      "groundTruth": "The government of Qatar started repealing restrictions on migrant workers between 2018 and 2020.",
+      "answer": "According to the provided context, between 2018 and 2020, the government of Qatar took important steps towards tackling the restrictions on migrant workers by repealing the requirement for an \"exit permit\" to leave the country and a \"no-objection certificate\" (NOC) to change jobs.\n\nDocument [4] (amnesty_doc_19) states: \"Between 2018 and 2020, the government took important steps towards tackling two central pillars of this system by repealing for most migrant workers the requirement to obtain from their employer an 'exit permit\u2019 to leave the country, and a \u2018no-objection certificate\u2019 (NOC) to change jobs.\"",
+      "reasoning": "The generated answer directly addressed the question, providing a clear and concise answer to the query about when the government of Qatar started repealing restrictions on migrant workers. The answer was not overly verbose or included unnecessary information.",
+      "insight": "Balanced RRF fusion preserved dense semantic proximity while indexing rare domain tokens."
+    }
+  ]
+};
 
-  let currentPhase = "phase2";
+  let activeView = "phase2";
 
-  function setPhase(phase) {
-    currentPhase = phase;
-    document.getElementById("btnPhase1").classList.remove("active");
-    document.getElementById("btnPhase2").classList.remove("active");
-    document.getElementById("btnCompare").classList.remove("active");
+  function setDashboardView(view) {
+    activeView = view;
+    document.getElementById("segPhase1").classList.remove("active");
+    document.getElementById("segPhase2").classList.remove("active");
+    document.getElementById("segDiff").classList.remove("active");
 
-    if (phase === "phase1") {
-      document.getElementById("btnPhase1").classList.add("active");
-      updateCards(DATA.phase1, false);
-      document.getElementById("legendPhase1").style.display = "none";
-      document.getElementById("legendPhase2").style.display = "flex";
-      document.getElementById("legendPhase2Label").innerText = "Baseline";
-      drawRadar([DATA.phase1.recall, DATA.phase1.precision, DATA.phase1.faithfulness, DATA.phase1.relevance], null);
-    } else if (phase === "phase2") {
-      document.getElementById("btnPhase2").classList.add("active");
-      updateCards(DATA.phase2, true);
-      document.getElementById("legendPhase1").style.display = "none";
-      document.getElementById("legendPhase2").style.display = "flex";
-      document.getElementById("legendPhase2Label").innerText = "Phase 2 (Hybrid)";
-      drawRadar([DATA.phase2.recall, DATA.phase2.precision, DATA.phase2.faithfulness, DATA.phase2.relevance], null);
+    const badge = document.getElementById("topActiveBadge");
+
+    if (view === "phase1") {
+      document.getElementById("segPhase1").classList.add("active");
+      badge.innerText = "Phase 1: Dense Baseline Active";
+      badge.style.background = "#f1f5f9";
+      badge.style.color = "#475569";
+      badge.style.borderColor = "#cbd5e1";
+
+      renderCards(BENCHMARK.phase1, false);
+      document.getElementById("radarLegendP1").style.display = "none";
+      document.getElementById("radarLegendP2").style.display = "flex";
+      document.getElementById("radarP2Label").innerText = "Baseline (Dense)";
+      drawModernRadar([BENCHMARK.phase1.recall, BENCHMARK.phase1.precision, BENCHMARK.phase1.faithfulness, BENCHMARK.phase1.relevance], null);
+    } else if (view === "phase2") {
+      document.getElementById("segPhase2").classList.add("active");
+      badge.innerText = "Phase 2: Hybrid Search Active";
+      badge.style.background = "#ecfdf5";
+      badge.style.color = "#065f46";
+      badge.style.borderColor = "#a7f3d0";
+
+      renderCards(BENCHMARK.phase2, true);
+      document.getElementById("radarLegendP1").style.display = "none";
+      document.getElementById("radarLegendP2").style.display = "flex";
+      document.getElementById("radarP2Label").innerText = "Phase 2 (Hybrid)";
+      drawModernRadar([BENCHMARK.phase2.recall, BENCHMARK.phase2.precision, BENCHMARK.phase2.faithfulness, BENCHMARK.phase2.relevance], null);
     } else {
-      document.getElementById("btnCompare").classList.add("active");
-      updateCards(DATA.phase2, true);
-      document.getElementById("legendPhase1").style.display = "flex";
-      document.getElementById("legendPhase2").style.display = "flex";
-      document.getElementById("legendPhase2Label").innerText = "Phase 2 (Hybrid)";
-      drawRadar(
-        [DATA.phase2.recall, DATA.phase2.precision, DATA.phase2.faithfulness, DATA.phase2.relevance],
-        [DATA.phase1.recall, DATA.phase1.precision, DATA.phase1.faithfulness, DATA.phase1.relevance]
+      document.getElementById("segDiff").classList.add("active");
+      badge.innerText = "Side-by-Side Overlay View";
+      badge.style.background = "#eef2ff";
+      badge.style.color = "#4f46e5";
+      badge.style.borderColor = "#c7d2fe";
+
+      renderCards(BENCHMARK.phase2, true);
+      document.getElementById("radarLegendP1").style.display = "flex";
+      document.getElementById("radarLegendP2").style.display = "flex";
+      document.getElementById("radarP2Label").innerText = "Phase 2 (Hybrid)";
+      drawModernRadar(
+        [BENCHMARK.phase2.recall, BENCHMARK.phase2.precision, BENCHMARK.phase2.faithfulness, BENCHMARK.phase2.relevance],
+        [BENCHMARK.phase1.recall, BENCHMARK.phase1.precision, BENCHMARK.phase1.faithfulness, BENCHMARK.phase1.relevance]
       );
     }
   }
 
-  function updateCards(data, showDelta) {
-    document.getElementById("cardRecallVal").innerText = data.recall.toFixed(1) + "%";
-    document.getElementById("cardRecallBar").style.width = data.recall + "%";
-    document.getElementById("cardRecallDelta").innerText = data.recallDelta;
-    document.getElementById("cardRecallDelta").style.display = showDelta ? "inline-block" : "none";
+  function renderCards(data, showDelta) {
+    document.getElementById("valRecall").innerText = data.recall.toFixed(1) + "%";
+    document.getElementById("barRecall").style.width = data.recall + "%";
+    document.getElementById("trendRecall").innerText = data.delta.recall;
+    document.getElementById("trendRecall").style.display = showDelta ? "inline-block" : "none";
 
-    document.getElementById("cardPrecisionVal").innerText = data.precision.toFixed(1) + "%";
-    document.getElementById("cardPrecisionBar").style.width = data.precision + "%";
-    document.getElementById("cardPrecisionDelta").innerText = data.precisionDelta;
-    document.getElementById("cardPrecisionDelta").style.display = showDelta ? "inline-block" : "none";
+    document.getElementById("valPrecision").innerText = data.precision.toFixed(1) + "%";
+    document.getElementById("barPrecision").style.width = data.precision + "%";
+    document.getElementById("trendPrecision").innerText = data.delta.precision;
+    document.getElementById("trendPrecision").style.display = showDelta ? "inline-block" : "none";
 
-    document.getElementById("cardFaithVal").innerText = data.faithfulness.toFixed(1) + "%";
-    document.getElementById("cardFaithBar").style.width = data.faithfulness + "%";
-    document.getElementById("cardFaithDelta").innerText = data.faithDelta;
+    document.getElementById("valFaith").innerText = data.faithfulness.toFixed(1) + "%";
+    document.getElementById("barFaith").style.width = data.faithfulness + "%";
+    document.getElementById("trendFaith").innerText = data.delta.faith;
 
-    document.getElementById("cardRelevanceVal").innerText = data.relevance.toFixed(1) + "%";
-    document.getElementById("cardRelevanceBar").style.width = data.relevance + "%";
-    document.getElementById("cardRelevanceDelta").innerText = data.relevanceDelta;
-    document.getElementById("cardRelevanceDelta").style.display = showDelta ? "inline-block" : "none";
+    document.getElementById("valRelevance").innerText = data.relevance.toFixed(1) + "%";
+    document.getElementById("barRelevance").style.width = data.relevance + "%";
+    document.getElementById("trendRelevance").innerText = data.delta.relevance;
+    document.getElementById("trendRelevance").style.display = showDelta ? "inline-block" : "none";
 
-    document.getElementById("cardLatencyVal").innerText = data.latency.toFixed(2) + "s";
-    document.getElementById("cardLatencyDelta").innerText = data.latencyDelta;
-    document.getElementById("cardLatencyDelta").style.display = showDelta ? "inline-block" : "none";
+    document.getElementById("valLatency").innerText = data.latency.toFixed(2) + "s";
+    document.getElementById("barLatency").style.width = (data.latency * 8) + "%";
+    document.getElementById("trendLatency").innerText = data.delta.latency;
+    document.getElementById("trendLatency").style.display = showDelta ? "inline-block" : "none";
 
-    document.getElementById("cardTriadVal").innerText = data.triad.toFixed(1) + "%";
-    document.getElementById("cardTriadBar").style.width = data.triad + "%";
-    document.getElementById("cardTriadDelta").innerText = data.triadDelta;
-    document.getElementById("cardTriadDelta").style.display = showDelta ? "inline-block" : "none";
-
-    // Snapshot
-    document.getElementById("snapRecallVal").innerText = data.recall.toFixed(1) + "%";
-    document.getElementById("snapRecallBar").style.width = data.recall + "%";
-    document.getElementById("snapPrecisionVal").innerText = data.precision.toFixed(1) + "%";
-    document.getElementById("snapPrecisionBar").style.width = data.precision + "%";
-    document.getElementById("snapFaithVal").innerText = data.faithfulness.toFixed(1) + "%";
-    document.getElementById("snapFaithBar").style.width = data.faithfulness + "%";
-    document.getElementById("snapRelevanceVal").innerText = data.relevance.toFixed(1) + "%";
-    document.getElementById("snapRelevanceBar").style.width = data.relevance + "%";
-    document.getElementById("snapLatency").innerText = data.latency.toFixed(2) + "s";
-    document.getElementById("snapScore").innerText = "Score: " + data.triad.toFixed(1) + "%";
+    document.getElementById("valTriad").innerText = data.triad.toFixed(1) + "%";
+    document.getElementById("barTriad").style.width = data.triad + "%";
+    document.getElementById("trendTriad").innerText = data.delta.triad;
+    document.getElementById("trendTriad").style.display = showDelta ? "inline-block" : "none";
   }
 
-  // Draw High-Resolution Radar Chart on HTML5 Canvas
-  function drawRadar(primaryValues, secondaryValues) {
+  // Draw High-Contrast, Modern Radar Chart
+  function drawModernRadar(primaryVals, secondaryVals) {
     const canvas = document.getElementById("radarCanvas");
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 2;
@@ -1327,64 +1540,71 @@
     ctx.scale(dpr, dpr);
 
     const centerX = w / 2;
-    const centerY = h / 2 + 5;
-    const radius = 105;
+    const centerY = h / 2 + 6;
+    const maxRadius = 120;
 
     const axes = [
-      { name: "Context Recall", angle: -Math.PI / 2 },
-      { name: "Precision", angle: 0 },
-      { name: "Faithfulness", angle: Math.PI / 2 },
-      { name: "Relevance", angle: Math.PI }
+      { name: "Context Recall", angle: -Math.PI / 2, align: "center", baseline: "bottom", offsetY: -16 },
+      { name: "Precision", angle: 0, align: "left", baseline: "middle", offsetX: 16 },
+      { name: "Faithfulness", angle: Math.PI / 2, align: "center", baseline: "top", offsetY: 16 },
+      { name: "Relevance", angle: Math.PI, align: "right", baseline: "middle", offsetX: -16 }
     ];
 
     const rings = [0.25, 0.5, 0.75, 1.0];
 
-    // Draw background concentric web
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 1;
-    rings.forEach(r => {
+    // Background Web with subtle alternating fills
+    rings.forEach((r, idx) => {
       ctx.beginPath();
       for (let i = 0; i < axes.length; i++) {
-        const x = centerX + Math.cos(axes[i].angle) * (radius * r);
-        const y = centerY + Math.sin(axes[i].angle) * (radius * r);
+        const x = centerX + Math.cos(axes[i].angle) * (maxRadius * r);
+        const y = centerY + Math.sin(axes[i].angle) * (maxRadius * r);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
       ctx.closePath();
+      ctx.fillStyle = idx % 2 === 0 ? "rgba(241, 245, 249, 0.65)" : "rgba(255, 255, 255, 0.9)";
+      ctx.fill();
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 1.2;
       ctx.stroke();
 
-      // Ring percentage label
+      // Percentage label on the vertical axis
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "10px sans-serif";
+      ctx.font = "600 10.5px 'JetBrains Mono', monospace";
       ctx.textAlign = "center";
-      ctx.fillText(Math.round(r * 100) + "%", centerX, centerY - (radius * r) + 10);
+      ctx.fillText(Math.round(r * 100) + "%", centerX, centerY - (maxRadius * r) + 12);
     });
 
-    // Draw axis spokes
+    // Axis Spokes
     axes.forEach(axis => {
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
-      ctx.lineTo(centerX + Math.cos(axis.angle) * radius, centerY + Math.sin(axis.angle) * radius);
-      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineTo(centerX + Math.cos(axis.angle) * maxRadius, centerY + Math.sin(axis.angle) * maxRadius);
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 1.4;
       ctx.stroke();
 
-      // Axis Labels
-      const labelX = centerX + Math.cos(axis.angle) * (radius + 24);
-      const labelY = centerY + Math.sin(axis.angle) * (radius + 24);
-      ctx.fillStyle = "#475569";
-      ctx.font = "bold 12px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      // Outer Axis Badges
+      const labelX = centerX + Math.cos(axis.angle) * maxRadius + (axis.offsetX || 0);
+      const labelY = centerY + Math.sin(axis.angle) * maxRadius + (axis.offsetY || 0);
+
+      ctx.fillStyle = "#090d16";
+      ctx.font = "700 12.5px 'Plus Jakarta Sans', sans-serif";
+      ctx.textAlign = axis.align;
+      ctx.textBaseline = axis.baseline;
       ctx.fillText(axis.name, labelX, labelY);
     });
 
-    // Function to draw a radar polygon
-    function renderPolygon(values, strokeColor, fillColor, pointColor) {
+    // Helper to draw clean polygon
+    function renderRadarShape(vals, strokeColor, fillColor, dotColor, isDashed = false) {
+      ctx.save();
+      if (isDashed) ctx.setLineDash([5, 5]);
+
       ctx.beginPath();
       for (let i = 0; i < axes.length; i++) {
-        const valFraction = Math.max(0.05, values[i] / 100);
-        const x = centerX + Math.cos(axes[i].angle) * (radius * valFraction);
-        const y = centerY + Math.sin(axes[i].angle) * (radius * valFraction);
+        const fraction = Math.max(0.08, vals[i] / 100);
+        const x = centerX + Math.cos(axes[i].angle) * (maxRadius * fraction);
+        const y = centerY + Math.sin(axes[i].angle) * (maxRadius * fraction);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -1392,58 +1612,92 @@
       ctx.fillStyle = fillColor;
       ctx.fill();
       ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2.8;
       ctx.stroke();
+      ctx.restore();
 
-      // Points
+      // Anchor dots
       for (let i = 0; i < axes.length; i++) {
-        const valFraction = Math.max(0.05, values[i] / 100);
-        const x = centerX + Math.cos(axes[i].angle) * (radius * valFraction);
-        const y = centerY + Math.sin(axes[i].angle) * (radius * valFraction);
+        const fraction = Math.max(0.08, vals[i] / 100);
+        const x = centerX + Math.cos(axes[i].angle) * (maxRadius * fraction);
+        const y = centerY + Math.sin(axes[i].angle) * (maxRadius * fraction);
+
         ctx.beginPath();
-        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = pointColor;
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = dotColor;
         ctx.fill();
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2.5;
         ctx.stroke();
       }
     }
 
-    // Draw secondary (Baseline) if present
-    if (secondaryValues) {
-      renderPolygon(secondaryValues, "#94a3b8", "rgba(148, 163, 184, 0.25)", "#64748b");
+    // Render Secondary (Baseline) if present
+    if (secondaryVals) {
+      renderRadarShape(secondaryVals, "#64748b", "rgba(148, 163, 184, 0.28)", "#475569", true);
     }
 
-    // Draw primary polygon
-    const stroke = currentPhase === "phase1" ? "#6366f1" : "#4f46e5";
-    const fill = currentPhase === "phase1" ? "rgba(99, 102, 241, 0.22)" : "rgba(79, 70, 229, 0.25)";
-    renderPolygon(primaryValues, stroke, fill, "#4f46e5");
+    // Render Primary Polygon
+    const isBaselineOnly = activeView === "phase1";
+    const primaryStroke = isBaselineOnly ? "#64748b" : "#4f46e5";
+    const primaryFill = isBaselineOnly ? "rgba(100, 116, 139, 0.3)" : "rgba(79, 70, 229, 0.35)";
+    const primaryDot = isBaselineOnly ? "#475569" : "#4338ca";
+
+    renderRadarShape(primaryVals, primaryStroke, primaryFill, primaryDot, false);
 
     ctx.restore();
   }
 
-  // Populate Query Table
-  function renderTable() {
-    const tbody = document.getElementById("queryTableBody");
+  // Render Modern Grouped Bar Chart
+  function renderComparativeBarChart() {
+    const container = document.getElementById("barChartContainer");
+    container.innerHTML = "";
+
+    BENCHMARK.metricsList.forEach(m => {
+      const p1H = Math.round((m.p1 / 100) * 190);
+      const p2H = Math.round((m.p2 / 100) * 190);
+
+      const group = document.createElement("div");
+      group.className = "bar-group";
+      group.innerHTML = `
+        <div class="bar-delta-tag">${m.delta}</div>
+        <div class="bar-pair">
+          <!-- Phase 1 Bar -->
+          <div class="bar-stem baseline" style="height: ${p1H}px;" title="Phase 1: ${m.p1}%">
+            <span class="bar-val-text">${m.p1}%</span>
+          </div>
+          <!-- Phase 2 Bar -->
+          <div class="bar-stem hybrid" style="height: ${p2H}px;" title="Phase 2: ${m.p2}%">
+            <span class="bar-val-text" style="color:#4f46e5;">${m.p2}%</span>
+          </div>
+        </div>
+        <div class="bar-label-caption">${m.label}</div>
+      `;
+      container.appendChild(group);
+    });
+  }
+
+  // Populate Diagnostics Table
+  function renderDiagnosticTable() {
+    const tbody = document.getElementById("evalTableBody");
     tbody.innerHTML = "";
 
-    DATA.samples.forEach(s => {
+    BENCHMARK.samples.forEach(s => {
       const delta = ((s.p2Recall - s.p1Recall) * 100).toFixed(0);
-      const deltaClass = delta > 0 ? "score-green" : "score-blue";
       const deltaSign = delta > 0 ? "+" : "";
+      const deltaChipClass = delta > 0 ? "chip-green" : "chip-blue";
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="query-id">${s.id}</td>
-        <td class="query-text">${s.question}</td>
-        <td><span class="score-pill score-amber">${(s.p1Recall * 100).toFixed(0)}%</span></td>
-        <td><span class="score-pill score-green">${(s.p2Recall * 100).toFixed(0)}%</span></td>
-        <td><span class="score-pill ${deltaClass}">${deltaSign}${delta}%</span></td>
+        <td><span class="qid-pill">${s.id}</span></td>
+        <td><div class="q-title">${s.question}</div></td>
+        <td><span class="chip chip-amber">${(s.p1Recall * 100).toFixed(0)}%</span></td>
+        <td><span class="chip chip-green">${(s.p2Recall * 100).toFixed(0)}%</span></td>
+        <td><span class="chip ${deltaChipClass}">${deltaSign}${delta}%</span></td>
         <td><b>${(s.p2Precision * 100).toFixed(0)}%</b></td>
-        <td><span class="score-pill score-green">${(s.faithfulness * 100).toFixed(0)}%</span></td>
+        <td><span class="chip chip-green">${(s.faithfulness * 100).toFixed(0)}%</span></td>
         <td><b>${(s.relevance * 100).toFixed(0)}%</b></td>
-        <td style="color:var(--text-muted);">${s.latency}s</td>
+        <td style="color:var(--text-muted); font-family:'JetBrains Mono', monospace;">${s.latency}s</td>
         <td>
           <button class="btn-inspect" onclick="openDrawer('${s.id}')">Inspect &rarr;</button>
         </td>
@@ -1453,46 +1707,42 @@
   }
 
   function openDrawer(id) {
-    const sample = DATA.samples.find(s => s.id === id);
-    if (!sample) return;
+    const s = BENCHMARK.samples.find(item => item.id === id);
+    if (!s) return;
 
-    document.getElementById("drawerId").innerText = sample.id;
-    document.getElementById("drawerTitle").innerText = sample.question;
-    document.getElementById("dmRecall").innerText = (sample.p2Recall * 100).toFixed(0) + "%";
-    document.getElementById("dmPrecision").innerText = (sample.p2Precision * 100).toFixed(0) + "%";
-    document.getElementById("dmFaith").innerText = (sample.faithfulness * 100).toFixed(0) + "%";
-    document.getElementById("dmRelevance").innerText = (sample.relevance * 100).toFixed(0) + "%";
+    document.getElementById("drawerQid").innerText = s.id;
+    document.getElementById("drawerQuestion").innerText = s.question;
+    document.getElementById("dmRecall").innerText = (s.p2Recall * 100).toFixed(0) + "%";
+    document.getElementById("dmPrecision").innerText = (s.p2Precision * 100).toFixed(0) + "%";
+    document.getElementById("dmFaith").innerText = (s.faithfulness * 100).toFixed(0) + "%";
+    document.getElementById("dmRelevance").innerText = (s.relevance * 100).toFixed(0) + "%";
 
-    document.getElementById("drawerGroundTruth").innerText = sample.groundTruth;
-    document.getElementById("drawerAnswer").innerText = sample.answer;
-    document.getElementById("drawerReasoning").innerText = sample.reasoning;
-    document.getElementById("drawerAblation").innerText = sample.ablationInsight;
+    document.getElementById("dmGroundTruth").innerText = s.groundTruth;
+    document.getElementById("dmAnswer").innerText = s.answer;
+    document.getElementById("dmReasoning").innerText = s.reasoning;
+    document.getElementById("dmInsight").innerText = s.insight;
 
-    document.getElementById("drawerOverlay").style.display = "flex";
+    document.getElementById("drawerScrim").style.display = "flex";
   }
 
   function closeDrawer(e) {
-    document.getElementById("drawerOverlay").style.display = "none";
+    document.getElementById("drawerScrim").style.display = "none";
   }
 
-  function switchNav(tab) {
-    const pills = document.querySelectorAll(".nav-pill");
-    pills.forEach(p => p.classList.remove("active"));
-    event.currentTarget.classList.add("active");
-
-    if (tab === "dashboard") setPhase("phase2");
-    else if (tab === "benchmark") setPhase("phase1");
-    else if (tab === "diff") setPhase("compare");
+  function copyCliCommand() {
+    const cmd = "python evals/run_eval.py --provider groq --dataset amnesty_qa --mode hybrid --limit 4";
+    navigator.clipboard.writeText(cmd).then(() => {
+      alert("Copied CLI Benchmark command to clipboard:\n\n" + cmd);
+    }).catch(() => {
+      prompt("Copy CLI Benchmark command:", cmd);
+    });
   }
 
-  function triggerRunInfo() {
-    alert("To execute a new evaluation run from CLI:\n\npython evals/run_eval.py --provider groq --dataset amnesty_qa --mode hybrid --limit 4\n\nResults will update benchmark CSVs and can be viewed here.");
-  }
-
-  // Initial Load
+  // Initialize
   window.addEventListener("DOMContentLoaded", () => {
-    setPhase("phase2");
-    renderTable();
+    setDashboardView("phase2");
+    renderComparativeBarChart();
+    renderDiagnosticTable();
   });
 </script>
 

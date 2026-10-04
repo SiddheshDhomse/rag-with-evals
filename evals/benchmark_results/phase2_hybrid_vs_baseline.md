@@ -1,12 +1,12 @@
 # Ablation Benchmark: Phase 1 (Baseline) vs Phase 2 (Hybrid Search)
 
-**Dataset**: `amnesty_qa_eval` ($N=4$)  
-**Evaluator**: LLM-as-a-Judge (`GROQ`)
+**Dataset**: mnesty_qa_eval (=20$)  
+**Provider Strategy**: Round-Robin Pool (GROQ, NVIDIA, OPENROUTER, OLLAMA) with Failover
 
-| Metric | Phase 1 (Dense Baseline) | Phase 2 (Hybrid BM25 + Dense RRF) | Delta | Assessment |
+| Metric | Phase 1 (Dense Baseline) | Phase 2 (Hybrid BM25 + Dense RRF) | Delta | Technical Assessment |
 | :--- | :---: | :---: | :---: | :--- |
-| **Context Recall** | **46.25%** | **83.75%** | **+37.50%** | Substantial improvement on exact keywords and sparse passages |
-| **Context Precision** | **57.50%** | **85.00%** | **+27.50%** | Improved signal-to-noise through lexical cross-validation |
-| **Faithfulness** | **100.00%** | **100.00%** | **+0.00%** | Preserves 100% adherence to retrieved evidence |
-| **Answer Relevance** | **80.00%** | **93.75%** | **+13.75%** | Higher recall directly enables more complete answers |
-| **Average Latency** | **10.35s** | **2.33s** | **-8.02s** | Negligible overhead for in-memory BM25 index |
+| **Context Recall** | **76.50%** | **86.25%** | **+9.75%** | Substantial improvement on exact keywords and sparse passages |
+| **Context Precision** | **59.50%** | **71.00%** | **+11.50%** | Improved signal-to-noise through lexical cross-validation |
+| **Faithfulness** | **94.00%** | **93.75%** | **-0.25%** | Robust adherence to retrieved evidence across both phases |
+| **Answer Relevance** | **73.65%** | **88.25%** | **+14.60%** | Higher recall and precision directly enable more complete answers |
+| **Average Latency** | **11.31s** | **9.80s** | **-1.52s** | Balanced load across cloud and local providers |
